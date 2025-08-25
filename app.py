@@ -719,6 +719,48 @@ def get_available_work_types():
     return jsonify({
         'work_types': list(dm.labor_costs.keys())
     })
+    
+    
+@app.route('/admin/update-work-type-name', methods=['POST'])
+def update_work_type_name():
+    if 'username' not in session or session['role'] != 'admin':
+        return jsonify({'success': False, 'message': '권한이 없습니다.'})
+    
+    try:
+        data = request.get_json()
+        old_name = data.get('old_name', '').strip()
+        new_name = data.get('new_name', '').strip()
+        
+        if not old_name or not new_name:
+            return jsonify({'success': False, 'message': '공종명을 입력해주세요.'})
+        
+        if old_name == new_name:
+            return jsonify({'success': True, 'message': '변경사항이 없습니다.'})
+            
+        if new_name in dm.labor_costs and new_name != old_name:
+            return jsonify({'success': False, 'message': '이미 존재하는 공종명입니다.'})
+        
+        # 노무단가에서 공종명 변경
+        if old_name in dm.labor_costs:
+            dm.labor_costs[new_name] = dm.labor_costs.pop(old_name)
+        
+        # 모든 프로젝트에서 공종명 변경
+        for project_data in dm.projects_data.values():
+            if 'work_types' in project_data and old_name in project_data['work_types']:
+                idx = project_data['work_types'].index(old_name)
+                project_data['work_types'][idx] = new_name
+            
+            # 일일 데이터에서도 공종명 변경
+            for daily_data in project_data.get('daily_data', {}).values():
+                if old_name in daily_data:
+                    daily_data[new_name] = daily_data.pop(old_name)
+        
+        dm.save_data()
+        return jsonify({'success': True, 'message': '공종명이 변경되었습니다.'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'오류: {str(e)}'})    
+    
 
 # ===== 실행 =====
 if __name__ == '__main__':

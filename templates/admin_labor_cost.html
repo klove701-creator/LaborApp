@@ -37,7 +37,15 @@
     <tbody>
         {% for work_type in work_types %}
         <tr>
-            <td class="work-type-name">{{ work_type }}</td>
+            <td class="work-type-name">
+                <span class="editable-work-type" onclick="editWorkType('{{ work_type }}', this)" title="클릭하여 수정">
+                    {{ work_type }}
+                </span>
+                <input type="text" class="work-type-edit-input" style="display:none;" 
+                       value="{{ work_type }}"
+                       onblur="saveWorkType('{{ work_type }}', this)" 
+                       onkeydown="handleKeyDown(event, '{{ work_type }}', this)">
+            </td>
             <td>
                 {% if labor_costs.get(work_type, {}).get('locked', False) %}
                     <span class="locked-value">{{ '{:,}'.format(labor_costs.get(work_type, {}).get('day', 0)) }}원</span>
@@ -130,18 +138,114 @@
         </div>
     </div>
 
-    <script>
-function deleteWorkType(workType) {
-    if (confirm(`${workType} 공종을 삭제하시겠습니까?`)) {
-        location.href = `/admin/labor-cost/delete/${workType}`;
+    <style>
+    .editable-work-type {
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+        display: inline-block;
+        min-width: 80px;
     }
-}
 
-function toggleLock(workType) {
-    location.href = `/admin/labor-cost/toggle-lock/${workType}`;
-}
+    .editable-work-type:hover {
+        background-color: #404040;
+        color: #0078d4;
+    }
 
-// 콤마 관련 JavaScript 모두 제거!
-</script>
+    .work-type-edit-input {
+        background: #1a1a1a;
+        color: white;
+        border: 2px solid #0078d4;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 14px;
+        width: 100%;
+        max-width: 150px;
+    }
+    </style>
+
+    <script>
+    function editWorkType(oldName, element) {
+        const span = element;
+        const input = element.nextElementSibling;
+        
+        span.style.display = 'none';
+        input.style.display = 'inline-block';
+        input.value = oldName;
+        input.focus();
+        input.select();
+    }
+
+    function saveWorkType(oldName, input) {
+        const newName = input.value.trim();
+        const span = input.previousElementSibling;
+        
+        if (!newName) {
+            input.value = oldName;
+            cancelEdit(input, span);
+            return;
+        }
+        
+        if (newName === oldName) {
+            cancelEdit(input, span);
+            return;
+        }
+        
+        // 서버로 변경 요청
+        fetch('/admin/update-work-type-name', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                old_name: oldName,
+                new_name: newName
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                span.textContent = newName;
+                alert('공종명이 변경되었습니다.');
+                location.reload();
+            } else {
+                alert('오류: ' + data.message);
+                input.value = oldName;
+            }
+            cancelEdit(input, span);
+        })
+        .catch(error => {
+            alert('네트워크 오류가 발생했습니다.');
+            input.value = oldName;
+            cancelEdit(input, span);
+        });
+    }
+
+    function handleKeyDown(event, oldName, input) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            saveWorkType(oldName, input);
+        } else if (event.key === 'Escape') {
+            input.value = oldName;
+            cancelEdit(input, input.previousElementSibling);
+        }
+    }
+
+    function cancelEdit(input, span) {
+        input.style.display = 'none';
+        span.style.display = 'inline-block';
+    }
+
+    function deleteWorkType(workType) {
+        if (confirm(workType + ' 공종을 삭제하시겠습니까?')) {
+            location.href = '/admin/labor-cost/delete/' + workType;
+        }
+    }
+
+    function toggleLock(workType) {
+        location.href = '/admin/labor-cost/toggle-lock/' + workType;
+    }
+    </script>
 </body>
 </html>
