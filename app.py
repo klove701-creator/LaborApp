@@ -175,6 +175,53 @@ def calculate_project_summary(project_name, current_date):
             'cumulative_progress': today_data.get('progress', 0)
         })
     return summary
+def calculate_project_work_summary(project_name):
+    """프로젝트별 공종 현황 계산 (엑셀 테이블용)"""
+    project_data = dm.projects_data.get(project_name, {})
+    work_types = project_data.get('work_types', [])
+    daily_data = project_data.get('daily_data', {})
+    contracts = project_data.get('contracts', {})
+    companies = project_data.get('companies', {})  # 업체 정보
+    
+    summary = []
+    
+    for work_type in work_types:
+        # 투입인원 누계 계산
+        total_workers = 0
+        for date_data in daily_data.values():
+            if work_type in date_data:
+                total_workers += date_data[work_type].get('total', 0)
+        
+        # 노무단가 가져오기
+        labor_rate = dm.labor_costs.get(work_type, {}).get('day', 0)
+        
+        # 계약노무비
+        contract_amount = contracts.get(work_type, 0)
+        
+        # 투입노무비 계산
+        total_labor_cost = total_workers * labor_rate
+        
+        # 잔액 계산
+        balance = contract_amount - total_labor_cost
+        
+        summary.append({
+            'work_type': work_type,
+            'company': companies.get(work_type, ''),  # 업체명
+            'contract_amount': contract_amount,       # 계약노무비
+            'total_workers': total_workers,           # 투입인원
+            'labor_rate': labor_rate,                # 단가
+            'total_labor_cost': total_labor_cost,    # 투입노무비
+            'balance': balance                       # 잔액
+        })
+    
+    return summary
+
+@app.context_processor
+def utility_processor():
+    return dict(
+        calculate_project_work_summary=calculate_project_work_summary,
+        sum=sum
+    )
 
 # ===== 인증 라우트 =====
 @app.route('/')
@@ -196,6 +243,51 @@ def login_post():
             return redirect(url_for('user_projects'))
     else:
         return render_template('login.html', error='아이디 또는 비밀번호가 틀렸습니다.')
+    
+@app.route('/admin/projects/update-excel/<project_name>', methods=['POST'])
+def update_project_excel(project_name):
+    """엑셀 테이블에서 프로젝트 업데이트"""
+    if 'username' not in session or session['role'] != 'admin':
+        return redirect(url_for('login'))
+    if project_name not in dm.projects_data:
+        return redirect(url_for('admin_projects'))
+
+    try:
+        # 선택된 공종들
+        selected_work_types = request.form.getlist('selected_work_types')
+        
+        # 업체 정보 업데이트
+        companies = {}
+        contracts = {}
+        
+        for work_type in selected_work_types:
+            # 업체명 저장
+            company = request.form.get(f'company_{work_type}', '').strip()
+            companies[work_type] = company
+            
+            # 계약금 저장
+            contract_raw = request.form.get(f'contract_{work_type}', '0').replace(',', '').strip()
+            contracts[work_type] = int(float(contract_raw)) if contract_raw else 0
+        
+        # 프로젝트 데이터 업데이트
+        dm.projects_data[project_name]['work_types'] = selected_work_types
+        dm.projects_data[project_name]['companies'] = companies
+        dm.projects_data[project_name]['contracts'] = contracts
+        
+        # 기존 daily_data에서 삭제된 공종들 제거
+        daily_data = dm.projects_data[project_name].get('daily_data', {})
+        for date_key, date_data in daily_data.items():
+            for work_type in list(date_data.keys()):
+                if work_type not in selected_work_types:
+                    del date_data[work_type]
+        
+        dm.save_data()
+        
+        return redirect(url_for('admin_projects'))
+        
+    except Exception as e:
+        print(f"프로젝트 업데이트 오류: {e}")
+        return redirect(url_for('admin_projects'))
 
 @app.route('/logout')
 def logout():
