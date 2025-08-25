@@ -761,6 +761,47 @@ def update_work_type_name():
     except Exception as e:
         return jsonify({'success': False, 'message': f'오류: {str(e)}'})    
     
+def calculate_project_work_summary(project_name):
+    """프로젝트별 공종 현황 계산 (엑셀 테이블용)"""
+    project_data = dm.projects_data.get(project_name, {})
+    work_types = project_data.get('work_types', [])
+    daily_data = project_data.get('daily_data', {})
+    contracts = project_data.get('contracts', {})
+    companies = project_data.get('companies', {})  # 새로 추가될 업체 정보
+    
+    summary = []
+    
+    for work_type in work_types:
+        # 투입인원 누계 계산
+        total_workers = 0
+        for date_data in daily_data.values():
+            if work_type in date_data:
+                total_workers += date_data[work_type].get('total', 0)
+        
+        # 노무단가 가져오기
+        labor_rate = dm.labor_costs.get(work_type, {}).get('day', 0)
+        
+        # 계약노무비
+        contract_amount = contracts.get(work_type, 0)
+        
+        # 투입노무비 계산
+        total_labor_cost = total_workers * labor_rate
+        
+        # 잔액 계산
+        balance = contract_amount - total_labor_cost
+        
+        summary.append({
+            'work_type': work_type,
+            'company': companies.get(work_type, ''),  # 업체명
+            'contract_amount': contract_amount,       # 계약노무비
+            'total_workers': total_workers,           # 투입인원
+            'labor_rate': labor_rate,                # 단가
+            'total_labor_cost': total_labor_cost,    # 투입노무비
+            'balance': balance                       # 잔액
+        })
+    
+    return summary    
+    
 
 # ===== 실행 =====
 if __name__ == '__main__':

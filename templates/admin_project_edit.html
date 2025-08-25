@@ -33,61 +33,75 @@
                         <option value="paused" {% if project_data.get('status') == 'paused' %}selected{% endif %}>중단</option>
                     </select>
                 </div>
-                
-                
-<div class="form-group">
-  <label>공종/계약금 수정:</label>
-  {% if available_work_types %}
-  <div class="trade-vertical">
-    {% set contracts = project_data.get('contracts', {}) %}
-    {% for work_type in available_work_types %}
-    {% set checked = 'checked' if work_type in project_data.work_types else '' %}
-    <div class="trade-row">
-      <label class="left">
-        <input type="checkbox" name="work_types" value="{{ work_type }}" {{ checked }}>
-        <span>{{ work_type }}</span>
-      </label>
-      <input type="number" min="0" step="1" name="contract_{{ work_type }}" value="{{ contracts.get(work_type, '') }}"
-             placeholder="노무비 계약금(원)" class="money">
-    </div>
-    {% endfor %}
-  </div>
-  {% else %}
-  <p class="no-work-types">등록된 공종이 없습니다. <a href="{{ url_for('admin_labor_cost') }}">노무비 설정</a>에서 공종을 먼저 추가해주세요.</p>
-  {% endif %}
-</div>
 
-<style>
-.trade-vertical{display:flex;flex-direction:column;gap:10px;background:#0b1220;border:1px solid #1f2937;border-radius:10px;padding:12px}
-.trade-row{display:flex;align-items:center;gap:12px}
-.trade-row .left{flex:0 0 220px;display:flex;align-items:center;gap:8px}
-.trade-row .money{flex:1 1 auto;height:40px;border-radius:10px;border:1px solid #1f2937;background:#07101b;color:#e5e7eb;padding:0 10px}
-</style>
-
-
-                <div class="project-stats">
-                    <h3>프로젝트 정보</h3>
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-label">생성일:</span>
-                            <span class="stat-value">{{ project_data.get('created_date', '미상') }}</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">데이터 입력 일수:</span>
-                            <span class="stat-value">{{ project_data.daily_data|length }}일</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">총 출역 인원:</span>
-                            <span class="stat-value">
+                <!-- 엑셀 형태 테이블 -->
+                <div class="form-group">
+                    <label>공종별 현황 관리:</label>
+                    <div class="excel-table-wrapper">
+                        <table class="excel-table">
+                            <thead>
+                                <tr>
+                                    <th>선택</th>
+                                    <th>공종명</th>
+                                    <th>업체</th>
+                                    <th>계약노무비</th>
+                                    <th>투입인원</th>
+                                    <th>단가</th>
+                                    <th>투입노무비</th>
+                                    <th>잔액</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set contracts = project_data.get('contracts', {}) %}
+                                {% set companies = project_data.get('companies', {}) %}
+                                {% for work_type in available_work_types %}
+                                {% set checked = 'checked' if work_type in project_data.work_types else '' %}
                                 {% set total_workers = 0 %}
                                 {% for date_data in project_data.daily_data.values() %}
-                                    {% for work_data in date_data.values() %}
-                                        {% set total_workers = total_workers + work_data.get('total', 0) %}
-                                    {% endfor %}
+                                    {% if work_type in date_data %}
+                                        {% set total_workers = total_workers + date_data[work_type].get('total', 0) %}
+                                    {% endif %}
                                 {% endfor %}
-                                {{ total_workers }}명
-                            </span>
-                        </div>
+                                {% set labor_rate = labor_costs.get(work_type, {}).get('day', 0) %}
+                                {% set contract_amount = contracts.get(work_type, 0) %}
+                                {% set total_labor_cost = total_workers * labor_rate %}
+                                {% set balance = contract_amount - total_labor_cost %}
+                                <tr class="excel-row" data-work-type="{{ work_type }}">
+                                    <td>
+                                        <input type="checkbox" name="work_types" value="{{ work_type }}" {{ checked }} 
+                                               onchange="updateRowCalculation('{{ work_type }}')">
+                                    </td>
+                                    <td class="work-type-cell">{{ work_type }}</td>
+                                    <td>
+                                        <input type="text" name="company_{{ work_type }}" 
+                                               value="{{ companies.get(work_type, '') }}" 
+                                               placeholder="업체명" class="company-input">
+                                    </td>
+                                    <td>
+                                        <input type="number" name="contract_{{ work_type }}" 
+                                               value="{{ contract_amount if contract_amount > 0 else '' }}" 
+                                               min="0" step="1000" placeholder="0" class="contract-input"
+                                               onchange="updateRowCalculation('{{ work_type }}')">
+                                    </td>
+                                    <td class="workers-cell" id="workers_{{ work_type }}">{{ total_workers }}</td>
+<td class="rate-cell" id="rate_{{ work_type }}">{{ labor_rate }}</td>
+<td class="labor-cost-cell" id="labor_cost_{{ work_type }}">{{ total_labor_cost }}</td>
+<td class="balance-cell" id="balance_{{ work_type }}">{{ balance }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 합계 행 -->
+                <div class="total-summary">
+                    <div class="summary-row">
+                        <span class="summary-label">합계:</span>
+                        <span class="summary-item">계약노무비: <strong id="total-contract">0</strong>원</span>
+                        <span class="summary-item">투입인원: <strong id="total-workers">0</strong>명</span>
+                        <span class="summary-item">투입노무비: <strong id="total-labor">0</strong>원</span>
+                        <span class="summary-item">잔액: <strong id="total-balance">0</strong>원</span>
                     </div>
                 </div>
                 
@@ -98,5 +112,219 @@
             </div>
         </form>
     </div>
+
+<style>
+.excel-table-wrapper {
+    overflow-x: auto;
+    margin: 20px 0;
+    border-radius: 8px;
+    background: #0b1220;
+    border: 1px solid #1f2937;
+}
+
+.excel-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: #0b1220;
+}
+
+.excel-table th {
+    background: #1f2937;
+    color: #e5e7eb;
+    padding: 12px 8px;
+    text-align: center;
+    font-weight: 600;
+    border: 1px solid #374151;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.excel-table td {
+    padding: 8px;
+    border: 1px solid #374151;
+    text-align: center;
+    background: #0f172a;
+}
+
+.excel-row:hover {
+    background: #1e293b !important;
+}
+
+.excel-row td {
+    background: inherit;
+}
+
+.company-input, .contract-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: #e5e7eb;
+    text-align: center;
+    padding: 4px;
+    font-size: 13px;
+}
+
+.company-input:focus, .contract-input:focus {
+    outline: 2px solid #0078d4;
+    background: #1e293b;
+}
+
+.work-type-cell {
+    font-weight: 600;
+    color: #60a5fa;
+}
+
+.workers-cell, .rate-cell, .labor-cost-cell {
+    font-family: 'Courier New', monospace;
+    font-weight: 500;
+}
+
+.balance-cell {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+}
+
+.total-summary {
+    margin: 20px 0;
+    padding: 15px;
+    background: #1f2937;
+    border-radius: 8px;
+    border: 2px solid #374151;
+}
+
+.summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.summary-label {
+    font-size: 18px;
+    font-weight: 600;
+    color: #f3f4f6;
+}
+
+.summary-item {
+    color: #d1d5db;
+}
+
+.summary-item strong {
+    color: #60a5fa;
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .excel-table {
+        font-size: 12px;
+    }
+    
+    .excel-table th,
+    .excel-table td {
+        padding: 6px 4px;
+    }
+    
+    .summary-row {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+}
+</style>
+
+<script>
+function updateRowCalculation(workType) {
+    const contractInput = document.querySelector(`input[name="contract_${workType}"]`);
+    const workersCell = document.getElementById(`workers_${workType}`);
+    const rateCell = document.getElementById(`rate_${workType}`);
+    const laborCostCell = document.getElementById(`labor_cost_${workType}`);
+    const balanceCell = document.getElementById(`balance_${workType}`);
+    
+    const contractAmount = parseFloat(contractInput.value) || 0;
+    const workers = parseFloat(workersCell.textContent) || 0;
+    const rate = parseFloat(rateCell.textContent.replace(/,/g, '')) || 0;
+    
+    const totalLaborCost = workers * rate;
+    const balance = contractAmount - totalLaborCost;
+    
+    // 숫자 포맷팅
+    laborCostCell.textContent = totalLaborCost.toLocaleString();
+    balanceCell.textContent = balance.toLocaleString();
+    
+    // 잔액 색상 변경
+    if (balance < 0) {
+        balanceCell.style.color = 'red';
+    } else if (balance > 0) {
+        balanceCell.style.color = 'green';
+    } else {
+        balanceCell.style.color = 'white';
+    }
+    
+    updateTotalSummary();
+}
+
+function updateTotalSummary() {
+    let totalContract = 0;
+    let totalWorkers = 0;
+    let totalLabor = 0;
+    let totalBalance = 0;
+    
+    document.querySelectorAll('.excel-row').forEach(row => {
+        const checkbox = row.querySelector('input[type="checkbox"]');
+        if (checkbox.checked) {
+            const workType = row.dataset.workType;
+            const contractInput = document.querySelector(`input[name="contract_${workType}"]`);
+            const workersCell = document.getElementById(`workers_${workType}`);
+            const rateCell = document.getElementById(`rate_${workType}`);
+            
+            const contract = parseFloat(contractInput.value) || 0;
+            const workers = parseFloat(workersCell.textContent) || 0;
+            const rate = parseFloat(rateCell.textContent.replace(/,/g, '')) || 0;
+            const labor = workers * rate;
+            const balance = contract - labor;
+            
+            totalContract += contract;
+            totalWorkers += workers;
+            totalLabor += labor;
+            totalBalance += balance;
+        }
+    });
+    
+    document.getElementById('total-contract').textContent = totalContract.toLocaleString();
+    document.getElementById('total-workers').textContent = totalWorkers.toLocaleString();
+    document.getElementById('total-labor').textContent = totalLabor.toLocaleString();
+    document.getElementById('total-balance').textContent = totalBalance.toLocaleString();
+    
+    const balanceElement = document.getElementById('total-balance');
+    if (totalBalance < 0) {
+        balanceElement.style.color = 'red';
+    } else if (totalBalance > 0) {
+        balanceElement.style.color = 'green';
+    } else {
+        balanceElement.style.color = '#60a5fa';
+    }
+}
+
+// 페이지 로드 시 합계 계산
+document.addEventListener('DOMContentLoaded', function() {
+    updateTotalSummary();
+    
+    // 모든 계약금 입력 필드에 이벤트 리스너 추가
+    document.querySelectorAll('.contract-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const workType = this.name.replace('contract_', '');
+            updateRowCalculation(workType);
+        });
+    });
+    
+    // 체크박스 변경 시 합계 업데이트
+    document.querySelectorAll('input[name="work_types"]').forEach(checkbox => {
+        checkbox.addEventListener('change', updateTotalSummary);
+    });
+});
+</script>
 </body>
 </html>
