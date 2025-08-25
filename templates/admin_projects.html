@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프로젝트 관리</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>프로젝트 관리</h1>
+            <div class="header-info">
+                <a href="{{ url_for('admin_dashboard') }}" class="back-btn">← 대시보드로</a>
+                <a href="{{ url_for('logout') }}" class="logout-btn">로그아웃</a>
+            </div>
+        </div>
+
+        <!-- 새 프로젝트 생성 -->
+        <div class="create-project-section">
+            <h2>새 프로젝트 생성</h2>
+            <form method="POST" action="{{ url_for('create_project') }}" class="create-form">
+                <div class="form-group">
+                    <label for="project_name">프로젝트명:</label>
+                    <input type="text" id="project_name" name="project_name" placeholder="예: 아파트 신축공사" required class="project-input">
+                </div>
+                
+                
+<div class="form-group">
+  <label>공종 선택:</label>
+  {% if available_work_types %}
+  <div class="trade-vertical">
+    {% for work_type in available_work_types %}
+    <div class="trade-row">
+      <label class="left">
+        <input type="checkbox" name="work_types" value="{{ work_type }}">
+        <span>{{ work_type }}</span>
+      </label>
+      <input type="number" min="0" step="1" name="contract_{{ work_type }}" placeholder="노무비 계약금(원)" class="money">
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="no-work-types">등록된 공종이 없습니다. <a href="{{ url_for('admin_labor_cost') }}">노무비 설정</a>에서 공종을 먼저 추가해주세요.</p>
+  {% endif %}
+</div>
+
+<style>
+.trade-vertical{display:flex;flex-direction:column;gap:10px;background:#0b1220;border:1px solid #1f2937;border-radius:10px;padding:12px}
+.trade-row{display:flex;align-items:center;gap:12px}
+.trade-row .left{flex:0 0 220px;display:flex;align-items:center;gap:8px}
+.trade-row .money{flex:1 1 auto;height:40px;border-radius:10px;border:1px solid #1f2937;background:#07101b;color:#e5e7eb;padding:0 10px}
+</style>
+
+                
+                <button type="submit" class="create-btn" {% if not available_work_types %}disabled{% endif %}>프로젝트 생성</button>
+            </form>
+        </div>
+
+        <!-- 기존 프로젝트 목록 -->
+        <div class="projects-list-section">
+            <h2>기존 프로젝트</h2>
+            {% if projects_data %}
+            <div class="projects-table-wrapper">
+                <table class="projects-table">
+                    <thead>
+                        <tr>
+                            <th>프로젝트명</th>
+                            <th>공종 수</th>
+                            <th>공종 목록</th>
+                            <th>상태</th>
+                            <th>생성일</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for project_name, project_data in projects_data.items() %}
+                        <tr>
+                            <td class="project-name">{{ project_name }}</td>
+                            <td class="work-count">{{ project_data.work_types|length }}개</td>
+                            <td class="work-types-list">
+                                {% for work_type in project_data.work_types %}
+                                <span class="work-type-tag">{{ work_type }}</span>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ project_data.get('status', 'active') }}">
+                                    {% if project_data.get('status', 'active') == 'active' %}
+                                        진행중
+                                    {% elif project_data.get('status') == 'completed' %}
+                                        완료
+                                    {% elif project_data.get('status') == 'paused' %}
+                                        중단
+                                    {% else %}
+                                        진행중
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>{{ project_data.get('created_date', '미상') }}</td>
+                            <td class="actions">
+                                <a href="{{ url_for('edit_project', project_name=project_name) }}" class="edit-btn">수정</a>
+                                <button class="delete-btn" onclick="deleteProject('{{ project_name }}')">삭제</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-projects">
+                <h3>등록된 프로젝트가 없습니다</h3>
+                <p>위에서 새로운 프로젝트를 생성해주세요</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        function deleteProject(projectName) {
+            if (confirm(`"${projectName}" 프로젝트를 삭제하시겠습니까?\n\n⚠️ 주의: 모든 출역 데이터가 함께 삭제됩니다.`)) {
+                location.href = `/admin/projects/delete/${projectName}`;
+            }
+        }
+    </script>
+</body>
+</html>

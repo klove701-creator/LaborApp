@@ -1,0 +1,50 @@
+{
+  "users": {
+    "admin": {
+      "password": "1234",
+      "role": "admin"
+    },
+    "user1": {
+      "password": "1234",
+      "role": "user",
+      "projects": [
+        "현대카드 인테리어공사"
+      ]
+    }
+  },
+  "projects_data": {
+    "현대카드 인테리어공사": {
+      "work_types": [
+        "도장공사",
+        "목공사",
+        "타일"
+      ],
+      "daily_data": {},
+      "status": "active",
+      "created_date": "2025-08-24",
+      "contracts": {
+        "도장공사": 200000,
+        "목공사": 250000,
+        "타일": 300000
+      }
+    }
+  },
+  "labor_costs": {
+    "도장공사": {
+      "day": 120000,
+      "night": 150000,
+      "midnight": 180000
+    },
+    "목공사": {
+      "day": 130000,
+      "night": 160000,
+      "midnight": 190000
+    },
+    "타일": {
+      "day": 140000,
+      "night": 170000,
+      "midnight": 200000
+    }
+  },
+  "last_updated": "2025-08-25 00:16:16"
+}

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프로젝트 수정 - {{ project_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>프로젝트 수정</h1>
+            <div class="header-info">
+                <a href="{{ url_for('admin_projects') }}" class="back-btn">← 프로젝트 관리로</a>
+                <a href="{{ url_for('logout') }}" class="logout-btn">로그아웃</a>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('update_project', project_name=project_name) }}" class="edit-form">
+            <div class="edit-project-section">
+                <h2>{{ project_name }} 수정</h2>
+                
+                <div class="form-group">
+                    <label for="project_name">프로젝트명:</label>
+                    <input type="text" id="project_name" name="project_name" value="{{ project_name }}" required class="project-input">
+                </div>
+
+                <div class="form-group">
+                    <label for="status">프로젝트 상태:</label>
+                    <select id="status" name="status" class="status-select">
+                        <option value="active" {% if project_data.get('status', 'active') == 'active' %}selected{% endif %}>진행중</option>
+                        <option value="completed" {% if project_data.get('status') == 'completed' %}selected{% endif %}>완료</option>
+                        <option value="paused" {% if project_data.get('status') == 'paused' %}selected{% endif %}>중단</option>
+                    </select>
+                </div>
+                
+                
+<div class="form-group">
+  <label>공종/계약금 수정:</label>
+  {% if available_work_types %}
+  <div class="trade-vertical">
+    {% set contracts = project_data.get('contracts', {}) %}
+    {% for work_type in available_work_types %}
+    {% set checked = 'checked' if work_type in project_data.work_types else '' %}
+    <div class="trade-row">
+      <label class="left">
+        <input type="checkbox" name="work_types" value="{{ work_type }}" {{ checked }}>
+        <span>{{ work_type }}</span>
+      </label>
+      <input type="number" min="0" step="1" name="contract_{{ work_type }}" value="{{ contracts.get(work_type, '') }}"
+             placeholder="노무비 계약금(원)" class="money">
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="no-work-types">등록된 공종이 없습니다. <a href="{{ url_for('admin_labor_cost') }}">노무비 설정</a>에서 공종을 먼저 추가해주세요.</p>
+  {% endif %}
+</div>
+
+<style>
+.trade-vertical{display:flex;flex-direction:column;gap:10px;background:#0b1220;border:1px solid #1f2937;border-radius:10px;padding:12px}
+.trade-row{display:flex;align-items:center;gap:12px}
+.trade-row .left{flex:0 0 220px;display:flex;align-items:center;gap:8px}
+.trade-row .money{flex:1 1 auto;height:40px;border-radius:10px;border:1px solid #1f2937;background:#07101b;color:#e5e7eb;padding:0 10px}
+</style>
+
+
+                <div class="project-stats">
+                    <h3>프로젝트 정보</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">생성일:</span>
+                            <span class="stat-value">{{ project_data.get('created_date', '미상') }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">데이터 입력 일수:</span>
+                            <span class="stat-value">{{ project_data.daily_data|length }}일</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">총 출역 인원:</span>
+                            <span class="stat-value">
+                                {% set total_workers = 0 %}
+                                {% for date_data in project_data.daily_data.values() %}
+                                    {% for work_data in date_data.values() %}
+                                        {% set total_workers = total_workers + work_data.get('total', 0) %}
+                                    {% endfor %}
+                                {% endfor %}
+                                {{ total_workers }}명
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="save-btn">수정 완료</button>
+                    <a href="{{ url_for('admin_projects') }}" class="cancel-btn">취소</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

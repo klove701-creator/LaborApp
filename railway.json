@@ -1,0 +1,19 @@
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "services": {
+    "web": {
+      "start": "gunicorn app:app --workers 2 --threads 4 --bind 0.0.0.0:$PORT",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "FLASK_ENV": "production",
+        "TZ": "Asia/Seoul"
+      },
+      "domains": []
+    }
+  },
+  "plugins": {
+    "postgresql": {}
+  }
+}

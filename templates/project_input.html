@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ project_name }} - 출역인원 입력</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>{{ project_name }}</h1>
+      <div class="header-info">
+        <input type="date" id="dateSelector" value="{{ selected_date }}" onchange="changeDate()">
+        <a href="{{ url_for('user_projects') }}" class="back-btn">← 프로젝트 목록</a>
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('save_project_data', project_name=project_name) }}">
+      <input type="hidden" name="date" value="{{ selected_date }}">
+
+      {% for work_type in work_types %}
+      <div class="work-type-accordion">
+        <div class="accordion-header" onclick="toggleAccordion('{{ work_type }}')">
+          <h2>{{ work_type }}</h2>
+          <div class="accordion-summary">
+            <span>금일: <strong id="today-{{ work_type }}">{{ total_summary[loop.index0].today }}명</strong></span>
+            <span>공정률: <strong id="progress-{{ work_type }}">{{ total_summary[loop.index0].today_progress }}%</strong></span>
+          </div>
+          <div class="accordion-arrow" id="arrow-{{ work_type }}">▼</div>
+        </div>
+
+        <div class="accordion-content" id="content-{{ work_type }}">
+          <div class="input-grid">
+            <div class="time-inputs">
+              <h3>출역인원</h3>
+              <div class="time-group">
+                <label>주간</label>
+                <input type="number" name="{{ work_type }}_day"
+                       value="{% if today_data.get(work_type, {}).get('day', 0) != 0 %}{{ today_data.get(work_type, {}).get('day', 0) }}{% endif %}"
+                       min="0" class="worker-input" placeholder="0"
+                       onchange="updateSummary('{{ work_type }}')">
+              </div>
+              <div class="time-group">
+                <label>야간</label>
+                <input type="number" name="{{ work_type }}_night"
+                       value="{% if today_data.get(work_type, {}).get('night', 0) != 0 %}{{ today_data.get(work_type, {}).get('night', 0) }}{% endif %}"
+                       min="0" class="worker-input" placeholder="0"
+                       onchange="updateSummary('{{ work_type }}')">
+              </div>
+              <div class="time-group">
+                <label>철야</label>
+                <input type="number" name="{{ work_type }}_midnight"
+                       value="{% if today_data.get(work_type, {}).get('midnight', 0) != 0 %}{{ today_data.get(work_type, {}).get('midnight', 0) }}{% endif %}"
+                       min="0" class="worker-input" placeholder="0"
+                       onchange="updateSummary('{{ work_type }}')">
+              </div>
+            </div>
+
+            <div class="progress-input">
+              <h3>공정률</h3>
+              <input type="number" name="{{ work_type }}_progress"
+                     value="{% if today_data.get(work_type, {}).get('progress', 0) != 0 %}{{ today_data.get(work_type, {}).get('progress', 0) }}{% endif %}"
+                     min="0" max="100" step="0.1" class="progress-input-field" placeholder="0"
+                     onchange="updateSummary('{{ work_type }}')">
+              <span>%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      <div class="form-actions">
+        <button type="button" class="expand-all-btn" onclick="toggleAllAccordions()">전체 펼치기</button>
+        <button type="submit" class="save-btn">저장하기</button>
+        <button type="button" class="add-work-type-btn" onclick="showAddWorkTypeModal()">+ 공종 추가</button>
+      </div>
+    </form>
+
+    <!-- 공종 추가 모달 -->
+    <div id="addWorkTypeModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>새 공종 추가</h3>
+          <span class="close" onclick="hideAddWorkTypeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+          <form id="addWorkTypeForm">
+            <div class="form-group">
+              <label for="newWorkTypeName">공종명:</label>
+              <input type="text" id="newWorkTypeName" placeholder="예: 타일, 도장, 전기" required>
+            </div>
+            <div class="form-group">
+              <small style="color: #b0b0b0;">
+                * 새 공종은 관리자가 노무비 단가를 설정한 후 사용할 수 있습니다.
+              </small>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="cancel-btn" onclick="hideAddWorkTypeModal()">취소</button>
+          <button type="button" class="save-btn" onclick="addNewWorkType()">공종 추가</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary-section">
+      <h2>현황</h2>
+      <div class="table-wrapper">
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th rowspan="2">공종</th>
+              <th colspan="4">금회</th>
+              <th colspan="4">누계</th>
+              <th rowspan="2">공정률(%)</th>
+            </tr>
+            <tr>
+              <th>주간</th>
+              <th>야간</th>
+              <th>철야</th>
+              <th>계</th>
+              <th>주간</th>
+              <th>야간</th>
+              <th>철야</th>
+              <th>계</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in total_summary %}
+            <tr>
+              <td class="work-type-name">{{ item.work_type }}</td>
+              <td>{{ item.today_day }}</td>
+              <td>{{ item.today_night }}</td>
+              <td>{{ item.today_midnight }}</td>
+              <td class="total-col">{{ item.today }}</td>
+              <td>{{ item.cumulative_day }}</td>
+              <td>{{ item.cumulative_night }}</td>
+              <td>{{ item.cumulative_midnight }}</td>
+              <td class="total-col">{{ item.cumulative }}</td>
+              <td class="progress-col">{{ item.cumulative_progress }}%</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* 공종 추가 버튼 스타일 */
+    .add-work-type-btn {
+      background: #28a745;
+      color: white;
+      padding: 12px 25px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s;
+      font-family: 'GmarketSans', sans-serif;
+      margin-left: 10px;
+    }
+
+    .add-work-type-btn:hover {
+      background: #218838;
+    }
+
+    /* 모달 스타일 */
+    .modal {
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+      background-color: #2d2d2d;
+      margin: 10% auto;
+      padding: 0;
+      border: 1px solid #404040;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      background: #353535;
+      padding: 20px 25px;
+      border-bottom: 1px solid #404040;
+      border-radius: 12px 12px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h3 {
+      color: #ffffff;
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .close {
+      color: #b0b0b0;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: color 0.3s;
+    }
+
+    .close:hover {
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 25px;
+    }
+
+    .modal-body .form-group {
+      margin-bottom: 20px;
+    }
+
+    .modal-body label {
+      display: block;
+      color: #ffffff;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .modal-body input[type="text"] {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #404040;
+      border-radius: 8px;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      font-size: 16px;
+      font-family: 'GmarketSans', sans-serif;
+    }
+
+    .modal-body input[type="text"]:focus {
+      outline: none;
+      border-color: #0078d4;
+      box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.1);
+    }
+
+    .modal-footer {
+      padding: 20px 25px;
+      border-top: 1px solid #404040;
+      border-radius: 0 0 12px 12px;
+      display: flex;
+      gap: 15px;
+      justify-content: flex-end;
+    }
+
+    .modal-footer .cancel-btn {
+      background: #404040;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .modal-footer .cancel-btn:hover {
+      background: #505050;
+    }
+
+    .modal-footer .save-btn {
+      background: #28a745;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .modal-footer .save-btn:hover {
+      background: #218838;
+    }
+
+    /* 모바일 대응 */
+    @media (max-width: 768px) {
+      .form-actions {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .add-work-type-btn {
+        margin-left: 0;
+        width: 100%;
+      }
+      
+      .modal-content {
+        margin: 5% auto;
+        width: 95%;
+      }
+      
+      .modal-footer {
+        flex-direction: column;
+      }
+    }
+  </style>
+
+  <script>
+    let allExpanded = false;
+
+    function changeDate() {
+      const dateSelector = document.getElementById('dateSelector');
+      const selectedDate = dateSelector.value;
+      const currentUrl = new URL(window.location);
+      currentUrl.searchParams.set('date', selectedDate);
+      window.location.href = currentUrl.toString();
+    }
+
+    function toggleAccordion(workType) {
+      const content = document.getElementById(`content-${workType}`);
+      const arrow = document.getElementById(`arrow-${workType}`);
+      if (content.style.display === 'block') {
+        content.style.display = 'none';
+        arrow.style.transform = 'rotate(0deg)';
+      } else {
+        content.style.display = 'block';
+        arrow.style.transform = 'rotate(180deg)';
+      }
+    }
+
+    function toggleAllAccordions() {
+      const allContents = document.querySelectorAll('.accordion-content');
+      const allArrows = document.querySelectorAll('.accordion-arrow');
+      const button = document.querySelector('.expand-all-btn');
+
+      allExpanded = !allExpanded;
+
+      allContents.forEach(content => {
+        content.style.display = allExpanded ? 'block' : 'none';
+      });
+
+      allArrows.forEach(arrow => {
+        arrow.style.transform = allExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+      });
+
+      button.textContent = allExpanded ? '전체 접기' : '전체 펼치기';
+    }
+
+    function updateSummary(workType) {
+      const dayInput = document.querySelector(`input[name="${workType}_day"]`);
+      const nightInput = document.querySelector(`input[name="${workType}_night"]`);
+      const midnightInput = document.querySelector(`input[name="${workType}_midnight"]`);
+      const progressInput = document.querySelector(`input[name="${workType}_progress"]`);
+
+      const day = parseInt(dayInput.value) || 0;
+      const night = parseInt(nightInput.value) || 0;
+      const midnight = parseInt(midnightInput.value) || 0;
+      const total = day + night + midnight;
+      const progress = parseFloat(progressInput.value) || 0;
+
+      document.getElementById(`today-${workType}`).textContent = `${total}명`;
+      document.getElementById(`progress-${workType}`).textContent = `${progress}%`;
+    }
+
+    // 공종 추가 모달 관련 함수들
+    function showAddWorkTypeModal() {
+      document.getElementById('addWorkTypeModal').style.display = 'block';
+      document.getElementById('newWorkTypeName').focus();
+    }
+
+    function hideAddWorkTypeModal() {
+      document.getElementById('addWorkTypeModal').style.display = 'none';
+      document.getElementById('newWorkTypeName').value = '';
+    }
+
+    function addNewWorkType() {
+      const workTypeName = document.getElementById('newWorkTypeName').value.trim();
+      
+      if (!workTypeName) {
+        alert('공종명을 입력해주세요.');
+        return;
+      }
+
+      // 서버로 새 공종 추가 요청 (중복 체크는 서버에서 처리)
+      fetch('/project/{{ project_name }}/add-work-type', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          work_type: workTypeName
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('공종이 추가되었습니다!\n관리자가 노무비를 설정하면 사용할 수 있습니다.');
+          hideAddWorkTypeModal();
+          // 페이지 새로고침으로 새 공종 표시
+          location.reload();
+        } else {
+          alert('공종 추가 실패: ' + data.message);
+        }
+      })
+      .catch(error => {
+        alert('네트워크 오류가 발생했습니다.');
+        console.error('Error:', error);
+      });
+    }
+
+    // 모달 외부 클릭 시 닫기
+    window.onclick = function(event) {
+      const modal = document.getElementById('addWorkTypeModal');
+      if (event.target === modal) {
+        hideAddWorkTypeModal();
+      }
+    }
+
+    // Enter 키로 공종 추가
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter' && document.getElementById('addWorkTypeModal').style.display === 'block') {
+        event.preventDefault();
+        addNewWorkType();
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const allContents = document.querySelectorAll('.accordion-content');
+      allContents.forEach(content => {
+        content.style.display = 'none';
+      });
+    });
+  </script>
+</body>
+</html>

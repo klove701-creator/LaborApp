@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 대시보드</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>관리자 대시보드</h1>
+            <div class="header-info">
+                <span class="admin-badge">관리자</span>
+                <a href="{{ url_for('logout') }}" class="logout-btn">로그아웃</a>
+            </div>
+        </div>
+
+        <!-- 요약 카드들 -->
+        <div class="summary-cards">
+            <div class="summary-card">
+                <h3>총 프로젝트</h3>
+                <div class="summary-number">{{ dashboard_data|length }}</div>
+                <p>개</p>
+            </div>
+            <div class="summary-card">
+                <h3>오늘 총 출역</h3>
+                <div class="summary-number">{{ dashboard_data|sum(attribute='today_workers') }}</div>
+                <p>명</p>
+            </div>
+            <div class="summary-card">
+                <h3>누계 총 출역</h3>
+                <div class="summary-number">{{ dashboard_data|sum(attribute='cumulative_workers') }}</div>
+                <p>명</p>
+            </div>
+            <div class="summary-card">
+                <h3>평균 진행률</h3>
+                <div class="summary-number">
+                    {% if dashboard_data %}
+                        {{ "%.1f"|format((dashboard_data|sum(attribute='avg_progress')) / (dashboard_data|length)) }}
+                    {% else %}
+                        0.0
+                    {% endif %}
+                </div>
+                <p>%</p>
+            </div>
+        </div>
+
+        <!-- 프로젝트 현황 테이블 -->
+        <div class="projects-overview">
+            <h2>프로젝트 현황</h2>
+            <div class="table-wrapper">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>프로젝트명</th>
+                            <th>최근업데이트</th>
+                            <th>공종수</th>
+                            <th>금일출역</th>
+                            <th>누계출역</th>
+                            <th>평균진행률</th>
+                            <th>상태</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for project in dashboard_data %}
+                        <tr>
+                            <td class="project-name">{{ project.project_name }}</td>
+                            <td>{{ project.recent_date }}</td>
+                            <td>{{ project.work_count }}개</td>
+                            <td class="number">{{ project.today_workers }}명</td>
+                            <td class="number">{{ project.cumulative_workers }}명</td>
+                            <td class="progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" data-progress="{{ project.avg_progress or 0 }}"></div>
+                                    <span class="progress-text">{{ project.avg_progress or 0 }}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ project.status_color }}">
+                                    {{ project.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="detail-btn" onclick="viewProject('{{ project.project_name }}')">상세보기</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 관리 메뉴 -->
+        <div class="admin-menu-section">
+            <h2>관리 메뉴</h2>
+            <div class="admin-menu">
+                <div class="menu-card">
+                    <h3>노무비 설정</h3>
+                    <p>공종별 노무비 단가 설정</p>
+                    <button class="menu-btn" onclick="location.href='/admin/labor-cost'">설정하기</button>
+                </div>
+                
+                <div class="menu-card">
+                    <h3>프로젝트 관리</h3>
+                    <p>프로젝트 생성 및 공종 설정</p>
+                    <button class="menu-btn" onclick="location.href='/admin/projects'">관리하기</button>
+                </div>
+                
+                <div class="menu-card">
+                    <h3>사용자 관리</h3>
+                    <p>사용자 계정 및 권한 관리</p>
+                    <button class="menu-btn" onclick="location.href='/admin/users'">관리하기</button>
+                </div>
+                
+                <div class="menu-card">
+                    <h3>보고서</h3>
+                    <p>데이터 분석 및 내보내기</p>
+                    <button class="menu-btn" onclick="location.href='/admin/reports'">보고서</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 페이지 로드시 프로그레스 바 설정
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.progress-fill').forEach(function(elem) {
+                const progress = elem.getAttribute('data-progress');
+                elem.style.width = progress + '%';
+            });
+        });
+
+        function viewProject(projectName) {
+            alert(`${projectName} 상세 보기 (구현 예정)`);
+        }
+    </script>
+</body>
+</html>
