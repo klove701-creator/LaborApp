@@ -194,7 +194,7 @@
             </div>
         </div>
 
-        <!-- 새 프로젝트 생성 -->
+        <!-- 새 프로젝트 생성 - 엑셀 테이블 스타일 -->
         <div class="create-project-section">
             <h2>새 프로젝트 생성</h2>
             <form method="POST" action="{{ url_for('create_project') }}" class="create-form">
@@ -206,156 +206,210 @@
                 <div class="form-group">
                     <label>공종 선택:</label>
                     {% if available_work_types %}
-                    <div class="trade-vertical">
-                        {% for work_type in available_work_types %}
-                        <div class="trade-row">
-                            <label class="left">
-                                <input type="checkbox" name="work_types" value="{{ work_type }}">
-                                <span>{{ work_type }}</span>
-                            </label>
-                            <input type="number" min="0" step="1" name="contract_{{ work_type }}" placeholder="노무비 계약금(원)" class="money">
-                        </div>
-                        {% endfor %}
-                    </div>
+                    <table class="excel-table" style="margin-top: 10px;">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">선택</th>
+                                <th style="width: 120px;">공종명</th>
+                                <th style="width: 150px;">업체</th>
+                                <th>계약노무비</th>
+                                <th style="width: 80px;">투입인원</th>
+                                <th style="width: 80px;">단가</th>
+                                <th>투입노무비</th>
+                                <th>잔액</th>
+                            </tr>
+                        </thead>
+                        <tbody id="create-tbody">
+                            {% for work_type in available_work_types %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="work_types" value="{{ work_type }}" onchange="toggleWorkTypeRow(this)">
+                                </td>
+                                <td class="work-type-cell">{{ work_type }}</td>
+                                <td class="company-cell">
+                                    <input type="text" name="company_{{ work_type }}" placeholder="업체명 입력" disabled>
+                                </td>
+                                <td class="number-cell">
+                                    <input type="number" name="contract_{{ work_type }}" placeholder="0" class="format-currency" disabled onchange="calculateCreateBalance(this)">
+                                </td>
+                                <td class="number-cell">
+                                    <input type="number" value="0" readonly>
+                                </td>
+                                <td class="number-cell">
+                                    <input type="number" value="{{ labor_costs.get(work_type, {}).get('day', 0) }}" readonly>
+                                </td>
+                                <td class="number-cell">
+                                    <input type="number" value="0" class="format-currency" readonly>
+                                </td>
+                                <td class="number-cell">
+                                    <input type="number" value="0" class="format-currency balance-zero" readonly>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            
+                            <!-- 합계 행 -->
+                            <tr class="summary-row">
+                                <td colspan="3">합계:</td>
+                                <td class="format-currency">
+                                    <span id="create-total-contract">0원</span>
+                                </td>
+                                <td>0명</td>
+                                <td></td>
+                                <td class="format-currency">0원</td>
+                                <td class="format-currency">
+                                    <span id="create-total-balance" class="balance-zero">0원</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                     {% else %}
                     <p class="no-work-types">등록된 공종이 없습니다. <a href="{{ url_for('admin_labor_cost') }}">노무비 설정</a>에서 공종을 먼저 추가해주세요.</p>
                     {% endif %}
                 </div>
 
-                <style>
-                .trade-vertical{display:flex;flex-direction:column;gap:10px;background:#0b1220;border:1px solid #1f2937;border-radius:10px;padding:12px}
-                .trade-row{display:flex;align-items:center;gap:12px}
-                .trade-row .left{flex:0 0 220px;display:flex;align-items:center;gap:8px}
-                .trade-row .money{flex:1 1 auto;height:40px;border-radius:10px;border:1px solid #1f2937;background:#07101b;color:#e5e7eb;padding:0 10px}
-                </style>
-
                 <button type="submit" class="create-btn" {% if not available_work_types %}disabled{% endif %}>프로젝트 생성</button>
             </form>
         </div>
 
-        <!-- 기존 프로젝트 엑셀 테이블 -->
-        {% if projects_data %}
-        {% for project_name, project_data in projects_data.items() %}
-        <div class="projects-container">
-            <div class="project-header">
-                <div class="project-name">{{ project_name }}</div>
-                <div class="project-status">
-                    <span class="status-badge status-{{ project_data.get('status', 'active') }}">
-                        {% if project_data.get('status', 'active') == 'active' %}진행중
-                        {% elif project_data.get('status') == 'completed' %}완료
-                        {% elif project_data.get('status') == 'paused' %}중단
-                        {% else %}진행중
-                        {% endif %}
-                    </span>
-                    <button class="btn-save" onclick="saveProject('{{ project_name }}')">저장</button>
-                    <a href="{{ url_for('edit_project', project_name=project_name) }}" class="btn-save" style="text-decoration: none; background: #6b7280;">수정</a>
-                </div>
-            </div>
-            
-            <form id="project-form-{{ loop.index }}" method="POST" action="{{ url_for('update_project_excel', project_name=project_name) }}">
-                <table class="excel-table">
+        <!-- 기존 프로젝트 목록 -->
+        <div class="projects-list-section">
+            <h2>기존 프로젝트</h2>
+            {% if projects_data %}
+            <div class="projects-table-wrapper">
+                <table class="projects-table">
                     <thead>
                         <tr>
-                            <th>선택</th>
-                            <th>공종명</th>
-                            <th>업체</th>
-                            <th>계약노무비</th>
-                            <th>투입인원</th>
-                            <th>단가</th>
-                            <th>투입노무비</th>
-                            <th>잔액</th>
-                            <th>삭제</th>
+                            <th>프로젝트명</th>
+                            <th>공종 수</th>
+                            <th>공종 목록</th>
+                            <th>상태</th>
+                            <th>생성일</th>
+                            <th>관리</th>
                         </tr>
                     </thead>
-                    <tbody id="tbody-{{ loop.index }}">
-                        {% set project_summary = calculate_project_work_summary(project_name) %}
-                        {% for work_data in project_summary %}
+                    <tbody>
+                        {% for project_name, project_data in projects_data.items() %}
                         <tr>
-                            <td><input type="checkbox" name="selected_work_types" value="{{ work_data.work_type }}" checked></td>
-                            <td class="work-type-cell">{{ work_data.work_type }}</td>
-                            <td class="company-cell">
-                                <input type="text" name="company_{{ work_data.work_type }}" 
-                                       value="{{ work_data.company }}" 
-                                       placeholder="업체명 입력">
-                            </td>
-                            <td class="number-cell">
-                                <input type="number" name="contract_{{ work_data.work_type }}" 
-                                       value="{{ work_data.contract_amount }}" 
-                                       class="format-currency"
-                                       onchange="calculateBalance(this)">
-                            </td>
-                            <td class="number-cell">
-                                <input type="number" name="workers_{{ work_data.work_type }}" 
-                                       value="{{ work_data.total_workers }}" 
-                                       readonly>
-                            </td>
-                            <td class="number-cell">
-                                <input type="number" name="rate_{{ work_data.work_type }}" 
-                                       value="{{ work_data.labor_rate }}" 
-                                       readonly>
-                            </td>
-                            <td class="number-cell">
-                                <input type="number" name="cost_{{ work_data.work_type }}" 
-                                       value="{{ work_data.total_labor_cost }}" 
-                                       class="format-currency"
-                                       readonly>
-                            </td>
-                            <td class="number-cell">
-                                <input type="number" name="balance_{{ work_data.work_type }}" 
-                                       value="{{ work_data.balance }}" 
-                                       class="format-currency {% if work_data.balance > 0 %}balance-positive{% elif work_data.balance < 0 %}balance-negative{% else %}balance-zero{% endif %}"
-                                       readonly>
+                            <td class="project-name">{{ project_name }}</td>
+                            <td class="work-count">{{ project_data.work_types|length }}개</td>
+                            <td class="work-types-list">
+                                {% for work_type in project_data.work_types %}
+                                <span class="work-type-tag">{{ work_type }}</span>
+                                {% endfor %}
                             </td>
                             <td>
-                                <button type="button" class="btn-delete" onclick="deleteWorkType(this, '{{ work_data.work_type }}')">삭제</button>
+                                <span class="status-badge status-{{ project_data.get('status', 'active') }}">
+                                    {% if project_data.get('status', 'active') == 'active' %}
+                                        진행중
+                                    {% elif project_data.get('status') == 'completed' %}
+                                        완료
+                                    {% elif project_data.get('status') == 'paused' %}
+                                        중단
+                                    {% else %}
+                                        진행중
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>{{ project_data.get('created_date', '미상') }}</td>
+                            <td class="actions">
+                                <a href="{{ url_for('edit_project', project_name=project_name) }}" class="edit-btn">수정</a>
+                                <button class="delete-btn" onclick="deleteProject('{{ project_name }}')">삭제</button>
                             </td>
                         </tr>
                         {% endfor %}
-                        
-                        <!-- 합계 행 -->
-                        <tr class="summary-row">
-                            <td colspan="3">합계:</td>
-                            <td class="format-currency">
-                                <span id="total-contract-{{ loop.index }}">
-                                    {{ "{:,}".format(project_summary|sum(attribute='contract_amount')) }}원
-                                </span>
-                            </td>
-                            <td>
-                                <span id="total-workers-{{ loop.index }}">
-                                    {{ project_summary|sum(attribute='total_workers') }}명
-                                </span>
-                            </td>
-                            <td></td>
-                            <td class="format-currency">
-                                <span id="total-cost-{{ loop.index }}">
-                                    {{ "{:,}".format(project_summary|sum(attribute='total_labor_cost')) }}원
-                                </span>
-                            </td>
-                            <td class="format-currency">
-                                <span id="total-balance-{{ loop.index }}" 
-                                      class="{% set total_balance = project_summary|sum(attribute='balance') %}{% if total_balance > 0 %}balance-positive{% elif total_balance < 0 %}balance-negative{% else %}balance-zero{% endif %}">
-                                    {{ "{:,}".format(project_summary|sum(attribute='balance')) }}원
-                                </span>
-                            </td>
-                            <td></td>
-                        </tr>
                     </tbody>
                 </table>
-                
-                <!-- 공종 추가 버튼 -->
-                <button type="button" class="btn-add-row" onclick="addWorkType('{{ loop.index }}')">+ 공종 추가</button>
-            </form>
+            </div>
+            {% else %}
+            <div class="empty-projects">
+                <h3>등록된 프로젝트가 없습니다</h3>
+                <p>위에서 새로운 프로젝트를 생성해주세요</p>
+            </div>
+            {% endif %}
         </div>
-        {% endfor %}
-        {% else %}
-        <div class="empty-projects">
-            <h3>등록된 프로젝트가 없습니다</h3>
-            <p>위에서 새로운 프로젝트를 생성해주세요</p>
-        </div>
-        {% endif %}
     </div>
 
     <script>
+        // 새 프로젝트 생성 - 공종 선택/해제 처리
+        function toggleWorkTypeRow(checkbox) {
+            const row = checkbox.closest('tr');
+            const inputs = row.querySelectorAll('input:not([type="checkbox"]):not([readonly])');
+            
+            inputs.forEach(input => {
+                input.disabled = !checkbox.checked;
+                if (!checkbox.checked) {
+                    input.value = input.type === 'number' ? '0' : '';
+                }
+            });
+            
+            updateCreateTotals();
+        }
+        
+        // 새 프로젝트 생성 - 잔액 계산
+        function calculateCreateBalance(element) {
+            const row = element.closest('tr');
+            const contractInput = row.querySelector('input[name^="contract_"]');
+            const balanceInput = row.querySelector('input[name^="balance_"], input[readonly]:last-child');
+            
+            if (contractInput && balanceInput) {
+                const contract = parseInt(contractInput.value) || 0;
+                const balance = contract; // 새 프로젝트는 투입노무비가 0이므로
+                
+                balanceInput.value = balance;
+                
+                // 잔액에 따른 색상 변경
+                balanceInput.className = balanceInput.className.replace(/balance-\w+/g, '');
+                if (balance > 0) {
+                    balanceInput.classList.add('balance-positive');
+                } else if (balance < 0) {
+                    balanceInput.classList.add('balance-negative');
+                } else {
+                    balanceInput.classList.add('balance-zero');
+                }
+            }
+            
+            updateCreateTotals();
+        }
+        
+        // 새 프로젝트 생성 - 합계 업데이트
+        function updateCreateTotals() {
+            const tbody = document.getElementById('create-tbody');
+            if (!tbody) return;
+            
+            const rows = tbody.querySelectorAll('tr:not(.summary-row)');
+            let totalContract = 0;
+            let totalBalance = 0;
+            
+            rows.forEach(row => {
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                    const contractInput = row.querySelector('input[name^="contract_"]');
+                    if (contractInput) {
+                        const contract = parseInt(contractInput.value) || 0;
+                        totalContract += contract;
+                        totalBalance += contract; // 새 프로젝트는 투입노무비가 0
+                    }
+                }
+            });
+            
+            // 합계 업데이트
+            const totalContractEl = document.getElementById('create-total-contract');
+            const totalBalanceEl = document.getElementById('create-total-balance');
+            
+            if (totalContractEl) totalContractEl.textContent = totalContract.toLocaleString() + '원';
+            if (totalBalanceEl) {
+                totalBalanceEl.textContent = totalBalance.toLocaleString() + '원';
+                totalBalanceEl.className = totalBalanceEl.className.replace(/balance-\w+/g, '');
+                if (totalBalance > 0) {
+                    totalBalanceEl.classList.add('balance-positive');
+                } else if (totalBalance < 0) {
+                    totalBalanceEl.classList.add('balance-negative');
+                } else {
+                    totalBalanceEl.classList.add('balance-zero');
+                }
+            }
+        }
+        
         // 잔액 계산 함수
         function calculateBalance(element) {
             const row = element.closest('tr');
@@ -430,67 +484,16 @@
             });
         }
         
-        // 공종 추가
-        function addWorkType(projectIndex) {
-            const workType = prompt('추가할 공종명을 입력하세요:');
-            if (!workType) return;
-            
-            const tbody = document.getElementById(`tbody-${projectIndex}`);
-            const summaryRow = tbody.querySelector('.summary-row');
-            
-            const newRow = document.createElement('tr');
-            newRow.innerHTML = `
-                <td><input type="checkbox" name="selected_work_types" value="${workType}" checked></td>
-                <td class="work-type-cell">${workType}</td>
-                <td class="company-cell">
-                    <input type="text" name="company_${workType}" value="" placeholder="업체명 입력">
-                </td>
-                <td class="number-cell">
-                    <input type="number" name="contract_${workType}" value="0" class="format-currency" onchange="calculateBalance(this)">
-                </td>
-                <td class="number-cell">
-                    <input type="number" name="workers_${workType}" value="0" readonly>
-                </td>
-                <td class="number-cell">
-                    <input type="number" name="rate_${workType}" value="0" readonly>
-                </td>
-                <td class="number-cell">
-                    <input type="number" name="cost_${workType}" value="0" class="format-currency" readonly>
-                </td>
-                <td class="number-cell">
-                    <input type="number" name="balance_${workType}" value="0" class="format-currency balance-zero" readonly>
-                </td>
-                <td>
-                    <button type="button" class="btn-delete" onclick="deleteWorkType(this, '${workType}')">삭제</button>
-                </td>
-            `;
-            
-            tbody.insertBefore(newRow, summaryRow);
-            updateTotals();
-        }
-        
-        // 공종 삭제
-        function deleteWorkType(button, workType) {
-            if (confirm(`"${workType}" 공종을 삭제하시겠습니까?`)) {
-                button.closest('tr').remove();
-                updateTotals();
-            }
-        }
-        
-        // 프로젝트 저장
-        function saveProject(projectName) {
-            const form = document.querySelector(`form[action*="${projectName}"]`);
-            if (form) {
-                form.submit();
-            } else {
-                alert('저장할 프로젝트 폼을 찾을 수 없습니다.');
-            }
-        }
-        
         // 페이지 로드 시 합계 계산
         document.addEventListener('DOMContentLoaded', function() {
-            updateTotals();
+            updateCreateTotals();
         });
+
+        function deleteProject(projectName) {
+            if (confirm(`"${projectName}" 프로젝트를 삭제하시겠습니까?\n\n⚠️ 주의: 모든 출역 데이터가 함께 삭제됩니다.`)) {
+                location.href = `/admin/projects/delete/${projectName}`;
+            }
+        }
     </script>
 </body>
 </html>

@@ -308,8 +308,9 @@ def admin_projects():
         return redirect(url_for('login'))
     available_work_types = list(dm.labor_costs.keys())
     return render_template('admin_projects.html',
-                           projects_data=dm.projects_data,
-                           available_work_types=available_work_types)
+                       projects_data=dm.projects_data,
+                       available_work_types=available_work_types,
+                       labor_costs=dm.labor_costs)  # 이 줄 추가
 
 @app.route('/admin/projects/create', methods=['POST'])
 def create_project():
