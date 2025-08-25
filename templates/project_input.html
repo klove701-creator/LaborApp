@@ -85,18 +85,23 @@
           <span class="close" onclick="hideAddWorkTypeModal()">&times;</span>
         </div>
         <div class="modal-body">
-          <form id="addWorkTypeForm">
-            <div class="form-group">
-              <label for="newWorkTypeName">공종명:</label>
-              <input type="text" id="newWorkTypeName" placeholder="예: 타일, 도장, 전기" required>
-            </div>
-            <div class="form-group">
-              <small style="color: #b0b0b0;">
-                * 새 공종은 관리자가 노무비 단가를 설정한 후 사용할 수 있습니다.
-              </small>
-            </div>
-          </form>
-        </div>
+  <!-- 기존 공종 선택 -->
+  <div class="existing-work-types">
+    <h4>기존 등록된 공종에서 선택:</h4>
+    <div id="existingWorkTypesList" class="work-type-checkboxes">
+      <!-- JavaScript로 동적 생성 -->
+    </div>
+  </div>
+  
+  <div class="divider">또는</div>
+  
+  <!-- 신규 공종 입력 -->
+  <div class="new-work-type">
+    <h4>새 공종 추가:</h4>
+    <input type="text" id="newWorkTypeName" placeholder="예: 전기공사" onblur="checkSimilarity()">
+    <div id="similarityWarning" class="warning-message" style="display:none;"></div>
+  </div>
+</div>
         <div class="modal-footer">
           <button type="button" class="cancel-btn" onclick="hideAddWorkTypeModal()">취소</button>
           <button type="button" class="save-btn" onclick="addNewWorkType()">공종 추가</button>
@@ -310,6 +315,71 @@
         flex-direction: column;
       }
     }
+    /* 기존 스타일 끝부분에 추가 */
+.divider {
+  text-align: center;
+  margin: 20px 0;
+  color: #b0b0b0;
+  position: relative;
+}
+
+.divider:before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #404040;
+  z-index: 1;
+}
+
+.divider {
+  background: #2d2d2d;
+  padding: 0 15px;
+  z-index: 2;
+  position: relative;
+}
+
+.work-type-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.work-type-checkboxes label {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #1a1a1a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.work-type-checkboxes label:hover {
+  background: #353535;
+  border-color: #0078d4;
+}
+
+.work-type-checkboxes input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.warning-message {
+  margin-top: 10px;
+  padding: 12px;
+  background: #ff6b35;
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.warning-icon {
+  margin-right: 8px;
+}
   </style>
 
   <script>

@@ -19,7 +19,31 @@
         "목공사",
         "타일"
       ],
-      "daily_data": {},
+      "daily_data": {
+        "2025-08-25": {
+          "도장공사": {
+            "day": 4,
+            "night": 2,
+            "midnight": 5,
+            "total": 11,
+            "progress": 5.0
+          },
+          "목공사": {
+            "day": 0,
+            "night": 0,
+            "midnight": 0,
+            "total": 0,
+            "progress": 0.0
+          },
+          "타일": {
+            "day": 4,
+            "night": 0,
+            "midnight": 0,
+            "total": 4,
+            "progress": 0.0
+          }
+        }
+      },
       "status": "active",
       "created_date": "2025-08-24",
       "contracts": {
@@ -46,5 +70,5 @@
       "midnight": 200000
     }
   },
-  "last_updated": "2025-08-25 00:16:16"
+  "last_updated": "2025-08-25 20:54:21"
 }

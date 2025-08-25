@@ -692,6 +692,33 @@ def reset_all_data():
         
     except Exception as e:
         return f"초기화 실패: {str(e)}"
+    
+    # 이 코드를 app.py 맨 마지막 부분에 추가 (if __name__ == '__main__' 위에)
+@app.route('/check-work-type-similarity', methods=['POST'])
+def check_work_type_similarity():
+    data = request.get_json()
+    new_type = data.get('work_type', '').strip()
+    
+    existing_types = list(dm.labor_costs.keys())  # 기존 공종들
+    similar_types = []
+    
+    for existing in existing_types:
+        # "타일" 입력했을 때 "타일공사" 찾기
+        if new_type in existing or existing in new_type:
+            if new_type.lower() != existing.lower():  # 완전히 같지 않으면
+                similar_types.append(existing)
+    
+    return jsonify({
+        'similar_types': similar_types,
+        'has_similarity': len(similar_types) > 0
+    })
+
+# 기존 공종 목록 가져오기
+@app.route('/get-available-work-types')
+def get_available_work_types():
+    return jsonify({
+        'work_types': list(dm.labor_costs.keys())
+    })
 
 # ===== 실행 =====
 if __name__ == '__main__':
@@ -699,7 +726,8 @@ if __name__ == '__main__':
     print(f"📊 초기 데이터 로드: 프로젝트 {len(dm.projects_data)}개, 노무단가 {len(dm.labor_costs)}개")
     print("🌐 브라우저에서 http://localhost:5000 접속")
     
-    # Railway 배포용 포트 설정 수정 체크차
+    # Railway 배포용 포트 설정 수정 체크차해봄
+    
     import os
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
