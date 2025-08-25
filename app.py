@@ -257,7 +257,8 @@ def edit_project(project_name):
     return render_template('admin_project_edit.html',
                            project_name=project_name,
                            project_data=project_data,
-                           available_work_types=available_work_types)
+                           available_work_types=available_work_types,
+                           labor_costs=dm.labor_costs) 
 
 @app.route('/admin/projects/update/<project_name>', methods=['POST'])
 def update_project(project_name):
