@@ -115,7 +115,37 @@
   .progress-bars{ flex:0 0 auto; max-width:none; }
   .progress-summary{ white-space:normal; }
 }
-
+/* 라벨(좌) + 막대(우) 2행 스택 — 라벨 폰트 높이에 맞춰 중앙정렬 */
+.pg-stack{
+  display:grid;
+  grid-template-columns: max-content 1fr; /* 라벨은 내용만큼, 막대는 남은 폭 */
+  grid-auto-rows: 1.2em;                  /* 행 높이 = 라벨 글자 높이 */
+  row-gap: .5em;                          /* 행 간격 */
+  column-gap: 12px;
+  align-items: center;                    /* 라벨/막대 세로 중앙 일치 */
+}
+.pg-label{
+  font-weight:700; color:#e5e7eb; line-height:1.2;
+  display:flex; align-items:center; justify-content:flex-end;
+  min-width:4.5em; white-space:nowrap;
+}
+.pg-bar{
+  height:1.2em; background:#0e1424; border:1px solid #263147;
+  border-radius:999px; overflow:hidden; position:relative;
+}
+.pg-fill{ height:100%; width:0%; transition:width .6s ease; }
+.pg-fill.progress{ background:#3b82f6; }  /* 진행률(파란) */
+.pg-fill.schedule{ background:#ef4444; }  /* 공정율(빨간) */
+.pg-val{
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  font-size:12px; color:#e5e7eb; font-weight:700; pointer-events:none;
+}
+/* 좁은 화면에서는 라벨 위, 막대 아래로 1열 배치 */
+@media (max-width:900px){
+  .pg-stack{ grid-template-columns: 1fr; grid-auto-rows:auto; }
+  .pg-label{ justify-content:flex-start; margin-bottom:2px; }
+  .pg-bar{ height:1.2em; }
+}
     </style>
 </head>
 <body>
@@ -186,22 +216,18 @@
                             <td class="number">{{ project.today_workers }}명</td>
                             <td class="number">{{ project.cumulative_workers }}명</td>
                            <td class="progress">
-  <div class="progress-cell">
-    <!-- 왼쪽 50%: 막대 2줄 -->
-    <div class="progress-bars">
-      <div class="progress-stack">
-        <div class="progress-bar">
-          <div class="progress-fill progress" data-progress="{{ project.avg_progress or 0 }}"></div>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill schedule" data-progress="{{ project.schedule_rate or 0 }}"></div>
-        </div>
-      </div>
+  <div class="pg-stack">
+    <!-- 1행: 진행률 -->
+    <div class="pg-label">진행률</div>
+    <div class="pg-bar">
+      <div class="pg-fill progress" data-progress="{{ project.avg_progress or 0 }}"></div>
+      <span class="pg-val">{{ (project.avg_progress or 0)|round(1) }}%</span>
     </div>
-    <!-- 오른쪽 50%: 숫자 요약 -->
-    <div class="progress-summary">
-      진행률 {{ (project.avg_progress or 0)|round(1) }}% /
-      공정율 {{ (project.schedule_rate or 0)|round(1) }}%
+    <!-- 2행: 공정율 -->
+    <div class="pg-label">공정율</div>
+    <div class="pg-bar">
+      <div class="pg-fill schedule" data-progress="{{ project.schedule_rate or 0 }}"></div>
+      <span class="pg-val">{{ (project.schedule_rate or 0)|round(1) }}%</span>
     </div>
   </div>
 </td>
@@ -256,12 +282,12 @@
     <script>
         // 막대 게이지 채우기 (0~100로 클램프)
         document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.progress-fill').forEach(function(elem) {
-                const progress = parseFloat(elem.getAttribute('data-progress') || '0');
-                const clamped = Math.max(0, Math.min(100, progress));
-                elem.style.width = clamped + '%';
-            });
-        });
+  document.querySelectorAll('.progress-fill, .pg-fill').forEach(function(elem) {
+    const p = parseFloat(elem.getAttribute('data-progress') || '0');
+    const clamped = Math.max(0, Math.min(100, p));
+    elem.style.width = clamped + '%';
+  });
+});
 
         // 상세보기: 관리자 편집 페이지로 이동
         function viewProject(projectName) {
