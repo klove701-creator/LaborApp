@@ -110,9 +110,29 @@ def update_work_type_name():
     except Exception as e:
         return jsonify({'success': False, 'message': f'오류: {str(e)}'})
 
-# ===== 시스템 초기화 (관리자 전용) =====
+# ===== 시스템 초기화 (개발용 - 운영환경에서는 비활성화) =====
 @app.route('/reset-all-data', methods=['POST'])
 def reset_all_data():
+    # 운영환경에서는 초기화 기능 완전 차단
+    if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('PORT'):
+        return """
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+            .error { background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 5px; color: #721c24; }
+            .button { display: inline-block; background: #007bff; color: white; padding: 10px 20px;
+                      text-decoration: none; border-radius: 5px; margin: 5px; }
+        </style>
+        <div class="error">
+            <h2>❌ 기능 비활성화</h2>
+            <p>운영 환경에서는 데이터 초기화가 차단됩니다.</p>
+            <p>실제 사용 중인 데이터 보호를 위해 이 기능은 개발 환경에서만 사용 가능합니다.</p>
+        </div>
+        <div style="margin-top: 30px;">
+            <a href="/admin" class="button">관리자 대시보드로</a>
+        </div>
+        """
+    
+    # 개발환경에서만 초기화 허용
     if 'username' not in session or session.get('role') != 'admin':
         return redirect(url_for('login'))
     
@@ -123,19 +143,12 @@ def reset_all_data():
         <style>
             body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
             .success { background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; }
-            .info { background: #d1ecf1; border: 1px solid #bee5eb; padding: 10px; border-radius: 5px; margin: 10px 0; }
             .button { display: inline-block; background: #007bff; color: white; padding: 10px 20px;
                       text-decoration: none; border-radius: 5px; margin: 5px; }
         </style>
-        <div class="success"><h2>✅ 시스템 초기화 완료!</h2></div>
-        <div class="info">
-            <h3>📊 초기 데이터</h3>
-            <p><strong>관리자 계정:</strong> admin / 1234</p>
-            <p><strong>프로젝트:</strong> 없음 (필요시 새로 생성)</p>
-            <p><strong>공종:</strong> 없음 (필요시 새로 추가)</p>
-        </div>
+        <div class="success"><h2>개발환경 초기화 완료</h2></div>
         <div style="margin-top: 30px;">
-            <a href="/" class="button">🏠 홈으로</a>
+            <a href="/" class="button">홈으로</a>
         </div>
         """
     except Exception as e:

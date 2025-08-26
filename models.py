@@ -14,8 +14,10 @@ class DataManager:
         self.load_data()
     
     def load_data(self):
-        """JSON 파일에서 데이터 로드"""
+        """JSON 파일에서 데이터 로드 - 운영 환경에서 데이터 보존"""
         print(f"🔍 JSON 파일 경로: {self.DATA_FILE} (존재: {os.path.exists(self.DATA_FILE)})")
+        
+        # 기존 데이터 파일이 있으면 절대 덮어쓰지 않음
         if os.path.exists(self.DATA_FILE):
             try:
                 with open(self.DATA_FILE, 'r', encoding='utf-8') as f:
@@ -23,12 +25,25 @@ class DataManager:
                     self.users = data.get('users', {})
                     self.projects_data = data.get('projects_data', {})
                     self.labor_costs = data.get('labor_costs', {})
-                    print(f"✅ 데이터 로드 완료! 프로젝트 수: {len(self.projects_data)}")
+                    print(f"✅ 기존 데이터 로드 완료! 프로젝트 {len(self.projects_data)}개, 사용자 {len(self.users)}개")
+                    
+                    # admin 계정이 없으면 추가 (기존 데이터 보존하면서)
+                    if 'admin' not in self.users:
+                        print("⚠️ admin 계정 없음 - 추가 생성")
+                        self.users['admin'] = {'password': '1234', 'role': 'admin'}
+                        self.save_data()
                     return
             except Exception as e:
                 print(f"❌ 데이터 로드 실패: {e}")
+                print("🔧 기존 파일을 백업하고 기본 계정만 생성합니다")
+                # 기존 파일 백업
+                import shutil
+                backup_file = self.DATA_FILE + '.backup'
+                shutil.copy2(self.DATA_FILE, backup_file)
+                print(f"📁 백업 파일: {backup_file}")
         
-        print("📄 새 데이터 생성")
+        # 파일이 없거나 로드 실패시에만 기본 데이터 생성
+        print("📄 새 설치 감지 - admin 계정만 생성")
         self._create_default_data()
         self.save_data()
     
