@@ -95,6 +95,27 @@
         padding: 10px; font-weight: 600; cursor: pointer;
       }
       .menu-btn:hover { background:#1d4ed8; }
+      /* 진행/공정 셀: 왼쪽 막대 2줄, 오른쪽 요약문구 */
+.progress-cell{ display:flex; align-items:center; gap:14px; }
+.progress-bars{ flex:0 0 50%; max-width:50%; }
+.progress-stack{ display:grid; gap:6px; }
+
+/* 막대(이미 있으면 중복돼도 무방) */
+.progress-bar{ position:relative; background:#0e1424; border:1px solid #263147; border-radius:999px; height:14px; overflow:hidden; }
+.progress-fill{ height:100%; width:0%; transition: width .6s ease; }
+.progress-fill.progress{ background:#3b82f6; }   /* 파란: 진행률 */
+.progress-fill.schedule{ background:#ef4444; }   /* 빨간: 공정율 */
+
+/* 오른쪽 50% 텍스트 */
+.progress-summary{ flex:1 1 50%; color:#e5e7eb; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* 좁은 화면에선 위/아래로 쌓기 */
+@media (max-width:900px){
+  .progress-cell{ flex-direction:column; align-items:stretch; }
+  .progress-bars{ flex:0 0 auto; max-width:none; }
+  .progress-summary{ white-space:normal; }
+}
+
     </style>
 </head>
 <body>
@@ -164,20 +185,27 @@
                             <td>{{ project.work_count }}개</td>
                             <td class="number">{{ project.today_workers }}명</td>
                             <td class="number">{{ project.cumulative_workers }}명</td>
-                            <td class="progress">
-                                <!-- 진행률 (파란) -->
-                                <div class="progress-bar" style="margin-bottom:6px;">
-                                    <div class="progress-fill" style="background:#3b82f6;"
-                                         data-progress="{{ project.avg_progress or 0 }}"></div>
-                                    <span class="progress-text">진행률 {{ project.avg_progress or 0 }}%</span>
-                                </div>
-                                <!-- 공정율 (빨간) -->
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="background:#ef4444;"
-                                         data-progress="{{ project.schedule_rate or 0 }}"></div>
-                                    <span class="progress-text">공정율 {{ project.schedule_rate or 0 }}%</span>
-                                </div>
-                            </td>
+                           <td class="progress">
+  <div class="progress-cell">
+    <!-- 왼쪽 50%: 막대 2줄 -->
+    <div class="progress-bars">
+      <div class="progress-stack">
+        <div class="progress-bar">
+          <div class="progress-fill progress" data-progress="{{ project.avg_progress or 0 }}"></div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill schedule" data-progress="{{ project.schedule_rate or 0 }}"></div>
+        </div>
+      </div>
+    </div>
+    <!-- 오른쪽 50%: 숫자 요약 -->
+    <div class="progress-summary">
+      진행률 {{ (project.avg_progress or 0)|round(1) }}% /
+      공정율 {{ (project.schedule_rate or 0)|round(1) }}%
+    </div>
+  </div>
+</td>
+
                             <td>
                                 <span class="status-badge status-{{ project.status_color }}">
                                     {{ project.status }}
