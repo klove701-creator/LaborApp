@@ -34,6 +34,24 @@ def register_user_routes(app, dm):
                                selected_date=selected_date,
                                total_summary=total_summary)
 
+    @app.route('/project/<project_name>/dates-with-data')
+    @login_required(role='user')
+    def project_dates_with_data(project_name):
+        """Return list of dates that have entries for given project"""
+        username = session['username']
+        user_projects_list = dm.users[username].get('projects', [])
+        if project_name not in user_projects_list:
+            return jsonify({'success': False, 'message': '프로젝트 접근 권한이 없습니다.'}), 403
+
+        daily_data = dm.projects_data.get(project_name, {}).get('daily_data', {})
+        month = request.args.get('month')  # optional 'YYYY-MM'
+        if month:
+            dates = [d for d in daily_data.keys() if d.startswith(month)]
+        else:
+            dates = list(daily_data.keys())
+        dates.sort()
+        return jsonify(dates)
+
     @app.route('/project/<project_name>/save', methods=['POST'])
     @login_required(role='user')
     def save_project_data(project_name):

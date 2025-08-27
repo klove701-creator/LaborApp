@@ -5,6 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>사용자 수정 - {{ username }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* 커스텀 체크박스 스타일 */
+        .project-checkbox {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 8px;
+            background: #1e293b;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .project-checkbox:hover {
+            background: #334155;
+        }
+
+        .project-checkbox input {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            accent-color: #3b82f6;
+            cursor: pointer;
+        }
+
+        .project-checkbox input:checked {
+            background: #3b82f6;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 8px;
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #374151;
+        }
+
+        /* 기존 checkmark 스타일 제거용 */
+        .checkmark {
+            display: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .stat-item {
+            background: #1e293b;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            display: block;
+            color: #9ca3af;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            display: block;
+            color: #3b82f6;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -56,7 +128,6 @@
                         <label class="project-checkbox">
                             <input type="checkbox" name="projects" value="{{ project }}" 
                                    {% if project in user_data.get('projects', []) %}checked{% endif %}>
-                            <span class="checkmark"></span>
                             {{ project }}
                         </label>
                         {% endfor %}
@@ -116,7 +187,5 @@
         });
     </script>
     <script src="{{ url_for('static', filename='js/currency-format.js') }}"></script>
-</body>
-
 </body>
 </html>
