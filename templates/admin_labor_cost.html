@@ -60,27 +60,33 @@
                                     {% if labor_costs.get(work_type, {}).get('locked', False) %}
                                         <span class="locked-value">{{ '{:,}'.format(labor_costs.get(work_type, {}).get('day', 0)) }}원</span>
                                     {% else %}
-                                        <input type="number" name="{{ work_type }}_day" 
-                                               value="{{ labor_costs.get(work_type, {}).get('day', 0) if labor_costs.get(work_type, {}).get('day', 0) != 0 else '' }}" 
-                                               min="0" step="1000" class="cost-input" placeholder="150,000">
+                                        <input type="text" name="{{ work_type }}_day" 
+                                               value="{{ '{:,}'.format(labor_costs.get(work_type, {}).get('day', 0)) if labor_costs.get(work_type, {}).get('day', 0) != 0 else '' }}" 
+                                               class="cost-input" placeholder="150,000"
+                                               oninput="formatNumberInput(this)"
+                                               onblur="validateNumberInput(this)">
                                     {% endif %}
                                 </td>
                                 <td>
                                     {% if labor_costs.get(work_type, {}).get('locked', False) %}
                                         <span class="locked-value">{{ '{:,}'.format(labor_costs.get(work_type, {}).get('night', 0)) }}원</span>
                                     {% else %}
-                                        <input type="number" name="{{ work_type }}_night" 
-                                               value="{{ labor_costs.get(work_type, {}).get('night', 0) if labor_costs.get(work_type, {}).get('night', 0) != 0 else '' }}" 
-                                               min="0" step="1000" class="cost-input" placeholder="180,000">
+                                        <input type="text" name="{{ work_type }}_night" 
+                                               value="{{ '{:,}'.format(labor_costs.get(work_type, {}).get('night', 0)) if labor_costs.get(work_type, {}).get('night', 0) != 0 else '' }}" 
+                                               class="cost-input" placeholder="180,000"
+                                               oninput="formatNumberInput(this)"
+                                               onblur="validateNumberInput(this)">
                                     {% endif %}
                                 </td>
                                 <td>
                                     {% if labor_costs.get(work_type, {}).get('locked', False) %}
                                         <span class="locked-value">{{ '{:,}'.format(labor_costs.get(work_type, {}).get('midnight', 0)) }}원</span>
                                     {% else %}
-                                        <input type="number" name="{{ work_type }}_midnight" 
-                                               value="{{ labor_costs.get(work_type, {}).get('midnight', 0) if labor_costs.get(work_type, {}).get('midnight', 0) != 0 else '' }}" 
-                                               min="0" step="1000" class="cost-input" placeholder="225,000">
+                                        <input type="text" name="{{ work_type }}_midnight" 
+                                               value="{{ '{:,}'.format(labor_costs.get(work_type, {}).get('midnight', 0)) if labor_costs.get(work_type, {}).get('midnight', 0) != 0 else '' }}" 
+                                               class="cost-input" placeholder="225,000"
+                                               oninput="formatNumberInput(this)"
+                                               onblur="validateNumberInput(this)">
                                     {% endif %}
                                 </td>
                                 <td>
@@ -116,9 +122,12 @@
                     <h3>새 공종 추가</h3>
                     <div class="add-form">
                         <input type="text" name="new_work_type" placeholder="공종명 (예: 철근)" class="new-input" required>
-                        <input type="number" name="new_day" placeholder="150,000" min="0" step="1000" class="new-input" required>
-                        <input type="number" name="new_night" placeholder="180,000" min="0" step="1000" class="new-input" required>
-                        <input type="number" name="new_midnight" placeholder="225,000" min="0" step="1000" class="new-input" required>
+                        <input type="text" name="new_day" placeholder="150,000" class="new-input" required
+                               oninput="formatNumberInput(this)" onblur="validateNumberInput(this)">
+                        <input type="text" name="new_night" placeholder="180,000" class="new-input" required
+                               oninput="formatNumberInput(this)" onblur="validateNumberInput(this)">
+                        <input type="text" name="new_midnight" placeholder="225,000" class="new-input" required
+                               oninput="formatNumberInput(this)" onblur="validateNumberInput(this)">
                     </div>
                 </div>
 
@@ -214,6 +223,35 @@
     </style>
 
     <script>
+    // 숫자 입력 시 천 단위 콤마 자동 추가
+    function formatNumberInput(input) {
+        let value = input.value.replace(/[^\d]/g, ''); // 숫자만 추출
+        if (value) {
+            // 천 단위마다 콤마 추가
+            value = parseInt(value).toLocaleString();
+        }
+        input.value = value;
+    }
+
+    // 입력 완료 시 유효성 검사
+    function validateNumberInput(input) {
+        let value = input.value.replace(/[^\d]/g, '');
+        if (!value) {
+            input.value = '';
+            return;
+        }
+        
+        const numValue = parseInt(value);
+        if (numValue < 0) {
+            alert('음수값은 입력할 수 없습니다.');
+            input.value = '';
+            return;
+        }
+        
+        // 최종 포맷팅
+        input.value = numValue.toLocaleString();
+    }
+
     // 공종명 편집
     function editWorkType(oldName, element) {
         const span = element;
@@ -297,20 +335,25 @@
         const currentNight = row.dataset.night;
         const currentMidnight = row.dataset.midnight;
         
+        // 현재 값들을 콤마 포맷으로 표시
+        const formattedDay = parseInt(currentDay).toLocaleString();
+        const formattedNight = parseInt(currentNight).toLocaleString();
+        const formattedMidnight = parseInt(currentMidnight).toLocaleString();
+        
         // 현재 값들을 프롬프트로 수정할 수 있게
-        const newDay = prompt(`${workType} - 주간 노무비를 입력하세요:`, currentDay);
+        const newDay = prompt(`${workType} - 주간 노무비를 입력하세요:`, formattedDay);
         if (newDay === null) return; // 취소됨
         
-        const newNight = prompt(`${workType} - 야간 노무비를 입력하세요:`, currentNight);
+        const newNight = prompt(`${workType} - 야간 노무비를 입력하세요:`, formattedNight);
         if (newNight === null) return; // 취소됨
         
-        const newMidnight = prompt(`${workType} - 철야 노무비를 입력하세요:`, currentMidnight);
+        const newMidnight = prompt(`${workType} - 철야 노무비를 입력하세요:`, formattedMidnight);
         if (newMidnight === null) return; // 취소됨
         
-        // 입력값 검증
-        const dayValue = parseInt(newDay.replace(/,/g, '')) || 0;
-        const nightValue = parseInt(newNight.replace(/,/g, '')) || 0;
-        const midnightValue = parseInt(newMidnight.replace(/,/g, '')) || 0;
+        // 입력값에서 콤마 제거 후 숫자로 변환
+        const dayValue = parseInt(newDay.replace(/[^\d]/g, '')) || 0;
+        const nightValue = parseInt(newNight.replace(/[^\d]/g, '')) || 0;
+        const midnightValue = parseInt(newMidnight.replace(/[^\d]/g, '')) || 0;
         
         if (dayValue < 0 || nightValue < 0 || midnightValue < 0) {
             alert('음수값은 입력할 수 없습니다.');
@@ -365,17 +408,15 @@
         }
     }
 
-    // 숫자 입력 포맷팅 (천 단위 콤마)
+    // 페이지 로드 시 기존 값들 콤마 포맷 적용
     document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.cost-input, .new-input[type="number"]').forEach(input => {
-            input.addEventListener('blur', function() {
-                if (this.value) {
-                    const value = parseInt(this.value.replace(/,/g, ''));
-                    if (!isNaN(value)) {
-                        this.value = value;
-                    }
+        document.querySelectorAll('.cost-input').forEach(input => {
+            if (input.value && input.value !== '') {
+                const numValue = parseInt(input.value.replace(/[^\d]/g, ''));
+                if (!isNaN(numValue)) {
+                    input.value = numValue.toLocaleString();
                 }
-            });
+            }
         });
     });
     </script>
