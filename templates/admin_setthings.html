@@ -6,6 +6,7 @@
     <title>시스템 설정</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
+        /* 설정 페이지 전용 스타일 */
         .settings-section {
             background: #0f172a;
             border-radius: 10px;
@@ -161,6 +162,51 @@
             background: #991b1b;
             color: #ef4444;
         }
+
+        /* 성공/오류 메시지 스타일 */
+        .success-banner {
+            background: #10b981;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #059669;
+        }
+
+        .error-banner {
+            background: #ef4444;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #dc2626;
+        }
+
+        .success-banner p,
+        .error-banner p {
+            margin: 0;
+            font-weight: 500;
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .setting-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            
+            .setting-control {
+                text-align: left;
+                min-width: auto;
+            }
+            
+            .setting-input,
+            .setting-select {
+                width: 100%;
+                max-width: 200px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -172,6 +218,19 @@
                 <a href="{{ url_for('logout') }}" class="logout-btn">로그아웃</a>
             </div>
         </div>
+
+        <!-- 성공/오류 메시지 표시 -->
+        {% if success_msg %}
+        <div class="success-banner">
+            <p>✓ {{ success_msg }}</p>
+        </div>
+        {% endif %}
+
+        {% if error_msg %}
+        <div class="error-banner">
+            <p>✗ {{ error_msg }}</p>
+        </div>
+        {% endif %}
 
         <form method="POST" action="{{ url_for('save_settings') }}">
             <!-- 테마 설정 -->
@@ -327,6 +386,14 @@
                 
                 if (value < min) this.value = min;
                 if (value > max) this.value = max;
+            });
+        });
+
+        // 설정 변경 시 실시간 미리보기 (선택적)
+        document.querySelectorAll('.setting-input').forEach(input => {
+            input.addEventListener('input', function() {
+                // 여기에 실시간 미리보기 로직 추가 가능
+                console.log(`${this.name}: ${this.value}%`);
             });
         });
     </script>
