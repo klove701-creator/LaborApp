@@ -289,37 +289,67 @@
         span.style.display = 'inline-block';
     }
 
-    // 공종 금액 수정 (수정 버튼 클릭 시 - data 속성 사용)
+    // 공종 금액 개별 수정 및 저장
     function editWorkTypeCostsFromRow(button) {
         const row = button.closest('tr');
         const workType = row.dataset.workType;
-        const day = row.dataset.day;
-        const night = row.dataset.night;
-        const midnight = row.dataset.midnight;
+        const currentDay = row.dataset.day;
+        const currentNight = row.dataset.night;
+        const currentMidnight = row.dataset.midnight;
         
-        // 해당 행의 input들을 활성화하고 값 설정
-        const dayInput = document.querySelector(`input[name="${workType}_day"]`);
-        const nightInput = document.querySelector(`input[name="${workType}_night"]`);
-        const midnightInput = document.querySelector(`input[name="${workType}_midnight"]`);
+        // 현재 값들을 프롬프트로 수정할 수 있게
+        const newDay = prompt(`${workType} - 주간 노무비를 입력하세요:`, currentDay);
+        if (newDay === null) return; // 취소됨
         
-        if (dayInput) {
-            dayInput.value = day;
-            dayInput.focus();
-            dayInput.select();
+        const newNight = prompt(`${workType} - 야간 노무비를 입력하세요:`, currentNight);
+        if (newNight === null) return; // 취소됨
+        
+        const newMidnight = prompt(`${workType} - 철야 노무비를 입력하세요:`, currentMidnight);
+        if (newMidnight === null) return; // 취소됨
+        
+        // 입력값 검증
+        const dayValue = parseInt(newDay.replace(/,/g, '')) || 0;
+        const nightValue = parseInt(newNight.replace(/,/g, '')) || 0;
+        const midnightValue = parseInt(newMidnight.replace(/,/g, '')) || 0;
+        
+        if (dayValue < 0 || nightValue < 0 || midnightValue < 0) {
+            alert('음수값은 입력할 수 없습니다.');
+            return;
         }
-        if (nightInput) nightInput.value = night;
-        if (midnightInput) midnightInput.value = midnight;
         
-        // 수정 중임을 알리는 알림
-        alert(`"${workType}" 공종의 금액을 수정합니다. 값을 변경한 후 "저장하기" 버튼을 클릭하세요.`);
+        // 서버로 개별 저장 요청
+        const formData = new FormData();
+        formData.append(`${workType}_day`, dayValue);
+        formData.append(`${workType}_night`, nightValue);
+        formData.append(`${workType}_midnight`, midnightValue);
+        
+        // 버튼 상태 변경
+        button.disabled = true;
+        button.textContent = '저장중...';
+        
+        fetch('/admin/labor-cost/update-single', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('노무비가 성공적으로 수정되었습니다.');
+                location.reload(); // 페이지 새로고침으로 업데이트된 값 표시
+            } else {
+                alert('오류: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('네트워크 오류가 발생했습니다.');
+            console.error('Error:', error);
+        })
+        .finally(() => {
+            // 버튼 상태 복원
+            button.disabled = false;
+            button.textContent = '수정';
+        });
     }
-
-    // 기존 함수는 제거하거나 주석 처리
-    /*
-    function editWorkTypeCosts(workType, day, night, midnight) {
-        // 이전 버전 - 사용 안함
-    }
-    */
 
     // 공종 삭제
     function deleteWorkType(workType) {
