@@ -473,7 +473,7 @@ def register_admin_routes(app, dm):
                         parse_float(work_data.get('progress', 0), 0.0)
                     ])
 
-        csv_text = '\ufeff' + output.getvalue()  # BOM 추가(엑셀 한글 안전)
+        csv_text = '\ufeff' + output.getvalue()  # BOM 추가(엑셀 한글 안전)1
         return Response(
             csv_text,
             mimetype='text/csv; charset=utf-8',
