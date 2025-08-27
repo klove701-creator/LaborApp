@@ -1,5 +1,5 @@
 # admin_routes.py - 관리자 관련 라우트
-from flask import render_template, request, redirect, url_for, session, Response
+from flask import render_template, request, redirect, url_for, session, Response, jsonify
 from datetime import date
 import csv
 import io
@@ -270,6 +270,51 @@ def register_admin_routes(app, dm):
         dm.save_data()
         return redirect(url_for('admin_labor_cost'))
 
+    @app.route('/admin/labor-cost/update-single', methods=['POST'])
+    @login_required(role='admin')
+    def update_single_work_type():
+        """개별 공종 노무비 업데이트"""
+        try:
+            # 폼에서 공종별 데이터 찾기
+            updated_work_type = None
+            for work_type in dm.labor_costs.keys():
+                day_key = f'{work_type}_day'
+                night_key = f'{work_type}_night'
+                midnight_key = f'{work_type}_midnight'
+                
+                if day_key in request.form:
+                    day_cost = parse_int(request.form.get(day_key, '0'), 0)
+                    night_cost = parse_int(request.form.get(night_key, '0'), 0)
+                    midnight_cost = parse_int(request.form.get(midnight_key, '0'), 0)
+                    
+                    # 값이 유효하면 업데이트
+                    if day_cost >= 0 and night_cost >= 0 and midnight_cost >= 0:
+                        dm.labor_costs[work_type].update({
+                            'day': day_cost,
+                            'night': night_cost,
+                            'midnight': midnight_cost
+                        })
+                        updated_work_type = work_type
+                        break
+            
+            if updated_work_type:
+                dm.save_data()
+                return jsonify({
+                    'success': True,
+                    'message': f'"{updated_work_type}" 공종 노무비가 업데이트되었습니다.'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': '업데이트할 공종을 찾을 수 없습니다.'
+                })
+                
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'업데이트 중 오류가 발생했습니다: {str(e)}'
+            })
+
     @app.route('/admin/labor-cost/delete/<work_type>')
     @login_required(role='admin')
     def delete_work_type_route(work_type):
@@ -473,7 +518,7 @@ def register_admin_routes(app, dm):
                         parse_float(work_data.get('progress', 0), 0.0)
                     ])
 
-        csv_text = '\ufeff' + output.getvalue()  # BOM 추가(엑셀 한글 안전)1
+        csv_text = '\ufeff' + output.getvalue()  # BOM 추가(엑셀 한글 안전)
         return Response(
             csv_text,
             mimetype='text/csv; charset=utf-8',

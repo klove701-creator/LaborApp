@@ -45,6 +45,9 @@ def register_user_routes(app, dm):
         if selected_date not in dm.projects_data[project_name]['daily_data']:
             dm.projects_data[project_name]['daily_data'][selected_date] = {}
 
+        # 데이터 변경 여부 확인을 위해
+        data_changed = False
+
         for work_type in dm.projects_data[project_name]['work_types']:
             day_workers = parse_int(request.form.get(f'{work_type}_day', '0'), 0)
             night_workers = parse_int(request.form.get(f'{work_type}_night', '0'), 0)
@@ -53,15 +56,31 @@ def register_user_routes(app, dm):
 
             total_workers = day_workers + night_workers + midnight_workers
 
-            dm.projects_data[project_name]['daily_data'][selected_date][work_type] = {
+            # 기존 데이터와 비교해서 변경 여부 확인
+            old_data = dm.projects_data[project_name]['daily_data'][selected_date].get(work_type, {})
+            new_data = {
                 'day': day_workers,
                 'night': night_workers,
                 'midnight': midnight_workers,
                 'total': total_workers,
                 'progress': progress
             }
+            
+            if old_data != new_data:
+                data_changed = True
+                dm.projects_data[project_name]['daily_data'][selected_date][work_type] = new_data
+                print(f"✅ 데이터 변경 감지: {project_name} - {work_type} - {selected_date}")
 
-        dm.save_data()
+        # 데이터가 변경된 경우에만 저장
+        if data_changed:
+            success = dm.save_data()
+            if success:
+                print(f"✅ 프로젝트 데이터 저장 성공: {project_name}")
+            else:
+                print(f"❌ 프로젝트 데이터 저장 실패: {project_name}")
+        else:
+            print(f"ℹ️ 변경 사항 없음: {project_name}")
+
         return redirect(url_for('project_detail', project_name=project_name, date=selected_date))
 
     @app.route('/project/<project_name>/add-work-type', methods=['POST'])

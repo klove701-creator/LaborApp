@@ -67,10 +67,24 @@ class DataManager:
                 'labor_costs': self.labor_costs,
                 'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
-            with open(self.DATA_FILE, 'w', encoding='utf-8') as f:
+            
+            # 원자적 쓰기: 임시 파일에 먼저 저장 후 이동
+            temp_file = self.DATA_FILE + '.tmp'
+            with open(temp_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
+            
+            # 임시 파일을 실제 파일로 이동 (원자적 연산)
+            import shutil
+            shutil.move(temp_file, self.DATA_FILE)
+            
             print(f"✅ 데이터 저장 완료! → {self.DATA_FILE}")
             return True
         except Exception as e:
             print(f"❌ 데이터 저장 실패: {e}")
+            # 임시 파일 정리
+            try:
+                if os.path.exists(self.DATA_FILE + '.tmp'):
+                    os.remove(self.DATA_FILE + '.tmp')
+            except:
+                pass
             return False

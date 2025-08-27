@@ -1,6 +1,6 @@
 # app.py - 메인 애플리케이션 (분할 버전)
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-from datetime import date
+from datetime import date, datetime
 import os
 
 # 분할된 모듈들 import
@@ -16,6 +16,13 @@ app.config['JSON_AS_ASCII'] = False
 
 # 데이터 매니저 초기화
 dm = DataManager()
+
+# 데이터 새로고침 (개발/디버깅용)
+@app.before_request
+def refresh_data():
+    if not hasattr(app, '_data_last_check') or (datetime.now() - app._data_last_check).seconds > 5:
+        dm.load_data()  # 5초마다 데이터 다시 로드
+        app._data_last_check = datetime.now()
 
 @app.template_filter('format_currency')
 def format_currency(value):
