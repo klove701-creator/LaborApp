@@ -272,7 +272,7 @@ def register_admin_routes(app, dm):
 
     @app.route('/admin/labor-cost/delete/<work_type>')
     @login_required(role='admin')
-    def delete_labor_cost(work_type):
+    def delete_work_type_route(work_type):
         """공종 삭제"""
         if work_type in dm.labor_costs:
             # 해당 공종을 사용하는 프로젝트가 있는지 확인
@@ -294,7 +294,7 @@ def register_admin_routes(app, dm):
 
     @app.route('/admin/labor-cost/toggle-lock/<work_type>')
     @login_required(role='admin')
-    def toggle_lock_work_type(work_type):
+    def toggle_lock_work_type_route(work_type):
         """공종 잠금 토글"""
         if work_type in dm.labor_costs:
             current_lock = dm.labor_costs[work_type].get('locked', False)
