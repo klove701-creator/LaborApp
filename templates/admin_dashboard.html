@@ -6,7 +6,7 @@
     <title>관리자 대시보드</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
-    <!-- 상단 현장 카드 4열 그리드 + 신호등 + 테이블 막대 + 관리메뉴 4열 -->
+    <!-- 상단 현장 카드 4열 그리드 + 신호등 + 테이블 막대 + 관리메뉴 5열 -->
     <style>
       /* 상단 현장 그리드 */
       .site-grid{
@@ -66,14 +66,14 @@
       .progress-fill{ height:100%; width:0%; transition: width .6s ease; }
       .progress-text{ display:inline-block; margin-left:8px; font-size:12px; color:#cbd5e1; }
 
-      /* 관리메뉴 4열 그리드 */
+      /* 관리메뉴 5열 그리드 (설정 추가) */
       .admin-menu {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 16px;
         margin-top: 16px;
       }
-      @media (max-width: 1200px) { .admin-menu { grid-template-columns: repeat(3, 1fr); } }
+      @media (max-width: 1400px) { .admin-menu { grid-template-columns: repeat(3, 1fr); } }
       @media (max-width: 900px)  { .admin-menu { grid-template-columns: repeat(2, 1fr); } }
       @media (max-width: 600px)  { .admin-menu { grid-template-columns: 1fr; } }
 
@@ -95,57 +95,60 @@
         padding: 10px; font-weight: 600; cursor: pointer;
       }
       .menu-btn:hover { background:#1d4ed8; }
+      .menu-btn.settings { background: #6b7280; }
+      .menu-btn.settings:hover { background: #4b5563; }
+      
       /* 진행/공정 셀: 왼쪽 막대 2줄, 오른쪽 요약문구 */
-.progress-cell{ display:flex; align-items:center; gap:14px; }
-.progress-bars{ flex:0 0 50%; max-width:50%; }
-.progress-stack{ display:grid; gap:6px; }
+      .progress-cell{ display:flex; align-items:center; gap:14px; }
+      .progress-bars{ flex:0 0 50%; max-width:50%; }
+      .progress-stack{ display:grid; gap:6px; }
 
-/* 막대(이미 있으면 중복돼도 무방) */
-.progress-bar{ position:relative; background:#0e1424; border:1px solid #263147; border-radius:999px; height:14px; overflow:hidden; }
-.progress-fill{ height:100%; width:0%; transition: width .6s ease; }
-.progress-fill.progress{ background:#3b82f6; }   /* 파란: 진행률 */
-.progress-fill.schedule{ background:#ef4444; }   /* 빨간: 공정율 */
+      /* 막대(이미 있으면 중복돼도 무방) */
+      .progress-bar{ position:relative; background:#0e1424; border:1px solid #263147; border-radius:999px; height:14px; overflow:hidden; }
+      .progress-fill{ height:100%; width:0%; transition: width .6s ease; }
+      .progress-fill.progress{ background:#3b82f6; }   /* 파란: 진행률 */
+      .progress-fill.schedule{ background:#ef4444; }   /* 빨간: 공정율 */
 
-/* 오른쪽 50% 텍스트 */
-.progress-summary{ flex:1 1 50%; color:#e5e7eb; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      /* 오른쪽 50% 텍스트 */
+      .progress-summary{ flex:1 1 50%; color:#e5e7eb; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-/* 좁은 화면에선 위/아래로 쌓기 */
-@media (max-width:900px){
-  .progress-cell{ flex-direction:column; align-items:stretch; }
-  .progress-bars{ flex:0 0 auto; max-width:none; }
-  .progress-summary{ white-space:normal; }
-}
-/* 라벨(좌) + 막대(우) 2행 스택 — 라벨 폰트 높이에 맞춰 중앙정렬 */
-.pg-stack{
-  display:grid;
-  grid-template-columns: max-content 1fr; /* 라벨은 내용만큼, 막대는 남은 폭 */
-  grid-auto-rows: 1.2em;                  /* 행 높이 = 라벨 글자 높이 */
-  row-gap: .5em;                          /* 행 간격 */
-  column-gap: 12px;
-  align-items: center;                    /* 라벨/막대 세로 중앙 일치 */
-}
-.pg-label{
-  font-weight:700; color:#e5e7eb; line-height:1.2;
-  display:flex; align-items:center; justify-content:flex-end;
-  min-width:4.5em; white-space:nowrap;
-}
-.pg-bar{
-  height:1.2em; background:#0e1424; border:1px solid #263147;
-  border-radius:999px; overflow:hidden; position:relative;
-}
-.pg-fill{ height:100%; width:0%; transition:width .6s ease; }
-.pg-fill.progress{ background:#3b82f6; }  /* 진행률(파란) */
-.pg-fill.schedule{ background:#ef4444; }  /* 공정율(빨간) */
-.pg-val{
-  position:absolute; right:8px; top:50%; transform:translateY(-50%);
-  font-size:12px; color:#e5e7eb; font-weight:700; pointer-events:none;
-}
-/* 좁은 화면에서는 라벨 위, 막대 아래로 1열 배치 */
-@media (max-width:900px){
-  .pg-stack{ grid-template-columns: 1fr; grid-auto-rows:auto; }
-  .pg-label{ justify-content:flex-start; margin-bottom:2px; }
-  .pg-bar{ height:1.2em; }
-}
+      /* 좁은 화면에선 위/아래로 쌓기 */
+      @media (max-width:900px){
+        .progress-cell{ flex-direction:column; align-items:stretch; }
+        .progress-bars{ flex:0 0 auto; max-width:none; }
+        .progress-summary{ white-space:normal; }
+      }
+      /* 라벨(좌) + 막대(우) 2행 스택 — 라벨 폰트 높이에 맞춰 중앙정렬 */
+      .pg-stack{
+        display:grid;
+        grid-template-columns: max-content 1fr; /* 라벨은 내용만큼, 막대는 남은 폭 */
+        grid-auto-rows: 1.2em;                  /* 행 높이 = 라벨 글자 높이 */
+        row-gap: .5em;                          /* 행 간격 */
+        column-gap: 12px;
+        align-items: center;                    /* 라벨/막대 세로 중앙 일치 */
+      }
+      .pg-label{
+        font-weight:700; color:#e5e7eb; line-height:1.2;
+        display:flex; align-items:center; justify-content:flex-end;
+        min-width:4.5em; white-space:nowrap;
+      }
+      .pg-bar{
+        height:1.2em; background:#0e1424; border:1px solid #263147;
+        border-radius:999px; overflow:hidden; position:relative;
+      }
+      .pg-fill{ height:100%; width:0%; transition:width .6s ease; }
+      .pg-fill.progress{ background:#3b82f6; }  /* 진행률(파란) */
+      .pg-fill.schedule{ background:#ef4444; }  /* 공정율(빨간) */
+      .pg-val{
+        position:absolute; right:8px; top:50%; transform:translateY(-50%);
+        font-size:12px; color:#e5e7eb; font-weight:700; pointer-events:none;
+      }
+      /* 좁은 화면에서는 라벨 위, 막대 아래로 1열 배치 */
+      @media (max-width:900px){
+        .pg-stack{ grid-template-columns: 1fr; grid-auto-rows:auto; }
+        .pg-label{ justify-content:flex-start; margin-bottom:2px; }
+        .pg-bar{ height:1.2em; }
+      }
     </style>
 </head>
 <body>
@@ -216,22 +219,21 @@
                             <td class="number">{{ project.today_workers }}명</td>
                             <td class="number">{{ project.cumulative_workers }}명</td>
                            <td class="progress">
-  <div class="pg-stack">
-    <!-- 1행: 진행률 -->
-    <div class="pg-label">진행률</div>
-    <div class="pg-bar">
-      <div class="pg-fill progress" data-progress="{{ project.avg_progress or 0 }}"></div>
-      <span class="pg-val">{{ (project.avg_progress or 0)|round(1) }}%</span>
-    </div>
-    <!-- 2행: 공정율 -->
-    <div class="pg-label">공정율</div>
-    <div class="pg-bar">
-      <div class="pg-fill schedule" data-progress="{{ project.schedule_rate or 0 }}"></div>
-      <span class="pg-val">{{ (project.schedule_rate or 0)|round(1) }}%</span>
-    </div>
-  </div>
-</td>
-
+                              <div class="pg-stack">
+                                <!-- 1행: 진행률 -->
+                                <div class="pg-label">진행률</div>
+                                <div class="pg-bar">
+                                  <div class="pg-fill progress" data-progress="{{ project.avg_progress or 0 }}"></div>
+                                  <span class="pg-val">{{ (project.avg_progress or 0)|round(1) }}%</span>
+                                </div>
+                                <!-- 2행: 공정율 -->
+                                <div class="pg-label">공정율</div>
+                                <div class="pg-bar">
+                                  <div class="pg-fill schedule" data-progress="{{ project.schedule_rate or 0 }}"></div>
+                                  <span class="pg-val">{{ (project.schedule_rate or 0)|round(1) }}%</span>
+                                </div>
+                              </div>
+                            </td>
                             <td>
                                 <span class="status-badge status-{{ project.status_color }}">
                                     {{ project.status }}
@@ -248,7 +250,7 @@
             </div>
         </div>
 
-        <!-- 관리 메뉴 (4열 그리드) -->
+        <!-- 관리 메뉴 (5열 그리드 - 설정 추가) -->
         <div class="admin-menu-section">
             <h2>관리 메뉴</h2>
             <div class="admin-menu">
@@ -275,19 +277,26 @@
                     <p>데이터 분석 및 내보내기</p>
                     <button class="menu-btn" onclick="location.href='/admin/reports'">보고서</button>
                 </div>
+
+                <div class="menu-card">
+                    <h3>설정</h3>
+                    <p>테마 및 알고리즘 설정</p>
+                    <button class="menu-btn settings" onclick="location.href='/admin/settings'">설정</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // 막대 게이지 채우기 (0~100로 클램프)
+        // 막대 게이지 채우기 (0% 진행률은 width: 0%로 표시)
         document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.progress-fill, .pg-fill').forEach(function(elem) {
-    const p = parseFloat(elem.getAttribute('data-progress') || '0');
-    const clamped = Math.max(0, Math.min(100, p));
-    elem.style.width = clamped + '%';
-  });
-});
+          document.querySelectorAll('.progress-fill, .pg-fill').forEach(function(elem) {
+            const p = parseFloat(elem.getAttribute('data-progress') || '0');
+            // 0% 이하는 표시 안함, 100% 초과는 100%로 제한
+            const clamped = Math.max(0, Math.min(100, p));
+            elem.style.width = clamped + '%';
+          });
+        });
 
         // 상세보기: 관리자 편집 페이지로 이동
         function viewProject(projectName) {

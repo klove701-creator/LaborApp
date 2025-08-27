@@ -16,6 +16,13 @@
             </div>
         </div>
 
+        <!-- 오류 메시지 표시 -->
+        {% if request.args.get('error') %}
+        <div class="error-banner">
+            <p>{{ request.args.get('error') }}</p>
+        </div>
+        {% endif %}
+
         <form method="POST" action="{{ url_for('save_labor_cost') }}">
             <div class="labor-cost-section">
                 <h2>공종별 노무비 단가</h2>
@@ -24,72 +31,79 @@
                 {% if work_types %}
                 <div class="cost-table-wrapper">
                     <table class="cost-table">
-    <thead>
-        <tr>
-            <th>공종</th>
-            <th>주간 (원)</th>
-            <th>야간 (원)</th>
-            <th>철야 (원)</th>
-            <th>잠금</th>
-            <th>관리</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for work_type in work_types %}
-        <tr>
-            <td class="work-type-name">
-                <span class="editable-work-type" onclick="editWorkType('{{ work_type }}', this)" title="클릭하여 수정">
-                    {{ work_type }}
-                </span>
-                <input type="text" class="work-type-edit-input" style="display:none;" 
-                       value="{{ work_type }}"
-                       onblur="saveWorkType('{{ work_type }}', this)" 
-                       onkeydown="handleKeyDown(event, '{{ work_type }}', this)">
-            </td>
-            <td>
-                {% if labor_costs.get(work_type, {}).get('locked', False) %}
-                    <span class="locked-value">{{ '{:,}'.format(labor_costs.get(work_type, {}).get('day', 0)) }}원</span>
-                {% else %}
-                    <input type="number" name="{{ work_type }}_day" 
-                           value="{{ labor_costs.get(work_type, {}).get('day', 0) if labor_costs.get(work_type, {}).get('day', 0) != 0 else '' }}" 
-                           min="0" step="1000" class="cost-input" placeholder="150,000">
-                {% endif %}
-            </td>
-            <td>
-                {% if labor_costs.get(work_type, {}).get('locked', False) %}
-                    <span class="locked-value">{{ '{:,}'.format(labor_costs.get(work_type, {}).get('night', 0)) }}원</span>
-                {% else %}
-                    <input type="number" name="{{ work_type }}_night" 
-                           value="{{ labor_costs.get(work_type, {}).get('night', 0) if labor_costs.get(work_type, {}).get('night', 0) != 0 else '' }}" 
-                           min="0" step="1000" class="cost-input" placeholder="180,000">
-                {% endif %}
-            </td>
-            <td>
-                {% if labor_costs.get(work_type, {}).get('locked', False) %}
-                    <span class="locked-value">{{ '{:,}'.format(labor_costs.get(work_type, {}).get('midnight', 0)) }}원</span>
-                {% else %}
-                    <input type="number" name="{{ work_type }}_midnight" 
-                           value="{{ labor_costs.get(work_type, {}).get('midnight', 0) if labor_costs.get(work_type, {}).get('midnight', 0) != 0 else '' }}" 
-                           min="0" step="1000" class="cost-input" placeholder="225,000">
-                {% endif %}
-            </td>
-            <td>
-                <button type="button" class="lock-btn {% if labor_costs.get(work_type, {}).get('locked', False) %}locked{% endif %}" 
-                        onclick="toggleLock('{{ work_type }}')">
-                    {% if labor_costs.get(work_type, {}).get('locked', False) %}🔒{% else %}🔓{% endif %}
-                </button>
-            </td>
-            <td>
-                {% if not labor_costs.get(work_type, {}).get('locked', False) %}
-                    <button type="button" class="delete-btn" onclick="deleteWorkType('{{ work_type }}')">삭제</button>
-                {% else %}
-                    <span class="protected-label">보호됨</span>
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+                        <thead>
+                            <tr>
+                                <th>공종</th>
+                                <th>주간 (원)</th>
+                                <th>야간 (원)</th>
+                                <th>철야 (원)</th>
+                                <th>잠금</th>
+                                <th>관리</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for work_type in work_types %}
+                            <tr data-work-type="{{ work_type }}" 
+                                data-day="{{ labor_costs.get(work_type, {}).get('day', 0) }}"
+                                data-night="{{ labor_costs.get(work_type, {}).get('night', 0) }}"
+                                data-midnight="{{ labor_costs.get(work_type, {}).get('midnight', 0) }}">
+                                <td class="work-type-name">
+                                    <span class="editable-work-type" onclick="editWorkType('{{ work_type }}', this)" title="클릭하여 수정">
+                                        {{ work_type }}
+                                    </span>
+                                    <input type="text" class="work-type-edit-input" style="display:none;" 
+                                           value="{{ work_type }}"
+                                           onblur="saveWorkType('{{ work_type }}', this)" 
+                                           onkeydown="handleKeyDown(event, '{{ work_type }}', this)">
+                                </td>
+                                <td>
+                                    {% if labor_costs.get(work_type, {}).get('locked', False) %}
+                                        <span class="locked-value">{{ '{:,}'.format(labor_costs.get(work_type, {}).get('day', 0)) }}원</span>
+                                    {% else %}
+                                        <input type="number" name="{{ work_type }}_day" 
+                                               value="{{ labor_costs.get(work_type, {}).get('day', 0) if labor_costs.get(work_type, {}).get('day', 0) != 0 else '' }}" 
+                                               min="0" step="1000" class="cost-input" placeholder="150,000">
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if labor_costs.get(work_type, {}).get('locked', False) %}
+                                        <span class="locked-value">{{ '{:,}'.format(labor_costs.get(work_type, {}).get('night', 0)) }}원</span>
+                                    {% else %}
+                                        <input type="number" name="{{ work_type }}_night" 
+                                               value="{{ labor_costs.get(work_type, {}).get('night', 0) if labor_costs.get(work_type, {}).get('night', 0) != 0 else '' }}" 
+                                               min="0" step="1000" class="cost-input" placeholder="180,000">
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if labor_costs.get(work_type, {}).get('locked', False) %}
+                                        <span class="locked-value">{{ '{:,}'.format(labor_costs.get(work_type, {}).get('midnight', 0)) }}원</span>
+                                    {% else %}
+                                        <input type="number" name="{{ work_type }}_midnight" 
+                                               value="{{ labor_costs.get(work_type, {}).get('midnight', 0) if labor_costs.get(work_type, {}).get('midnight', 0) != 0 else '' }}" 
+                                               min="0" step="1000" class="cost-input" placeholder="225,000">
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button type="button" class="lock-btn {% if labor_costs.get(work_type, {}).get('locked', False) %}locked{% endif %}" 
+                                            onclick="toggleLock('{{ work_type }}')">
+                                        {% if labor_costs.get(work_type, {}).get('locked', False) %}🔒{% else %}🔓{% endif %}
+                                    </button>
+                                </td>
+                                <td class="actions">
+                                    {% if not labor_costs.get(work_type, {}).get('locked', False) %}
+                                        <button type="button" class="edit-btn" 
+                                                onclick="editWorkTypeCostsFromRow(this)">
+                                            수정
+                                        </button>
+                                        <button type="button" class="delete-btn" onclick="deleteWorkType('{{ work_type }}')">삭제</button>
+                                    {% else %}
+                                        <span class="protected-label">보호됨</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
                 {% else %}
                 <div class="empty-state">
@@ -101,11 +115,11 @@
                 <div class="add-work-type">
                     <h3>새 공종 추가</h3>
                     <div class="add-form">
-    <input type="text" name="new_work_type" placeholder="공종명 (예: 철근)" class="new-input" required>
-    <input type="number" name="new_day" placeholder="150,000" min="0" step="1000" class="new-input" required>
-    <input type="number" name="new_night" placeholder="180,000" min="0" step="1000" class="new-input" required>
-    <input type="number" name="new_midnight" placeholder="225,000" min="0" step="1000" class="new-input" required>
-</div>
+                        <input type="text" name="new_work_type" placeholder="공종명 (예: 철근)" class="new-input" required>
+                        <input type="number" name="new_day" placeholder="150,000" min="0" step="1000" class="new-input" required>
+                        <input type="number" name="new_night" placeholder="180,000" min="0" step="1000" class="new-input" required>
+                        <input type="number" name="new_midnight" placeholder="225,000" min="0" step="1000" class="new-input" required>
+                    </div>
                 </div>
 
                 <div class="form-actions">
@@ -163,9 +177,44 @@
         width: 100%;
         max-width: 150px;
     }
+
+    .actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .edit-btn {
+        background: #10b981;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: background-color 0.3s;
+    }
+
+    .edit-btn:hover {
+        background: #059669;
+    }
+
+    .error-banner {
+        background: #ef4444;
+        color: white;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .error-banner p {
+        margin: 0;
+        font-weight: 500;
+    }
     </style>
 
     <script>
+    // 공종명 편집
     function editWorkType(oldName, element) {
         const span = element;
         const input = element.nextElementSibling;
@@ -177,6 +226,7 @@
         input.select();
     }
 
+    // 공종명 저장
     function saveWorkType(oldName, input) {
         const newName = input.value.trim();
         const span = input.previousElementSibling;
@@ -222,6 +272,7 @@
         });
     }
 
+    // 키보드 이벤트 처리
     function handleKeyDown(event, oldName, input) {
         if (event.key === 'Enter') {
             event.preventDefault();
@@ -232,20 +283,71 @@
         }
     }
 
+    // 편집 취소
     function cancelEdit(input, span) {
         input.style.display = 'none';
         span.style.display = 'inline-block';
     }
 
+    // 공종 금액 수정 (수정 버튼 클릭 시 - data 속성 사용)
+    function editWorkTypeCostsFromRow(button) {
+        const row = button.closest('tr');
+        const workType = row.dataset.workType;
+        const day = row.dataset.day;
+        const night = row.dataset.night;
+        const midnight = row.dataset.midnight;
+        
+        // 해당 행의 input들을 활성화하고 값 설정
+        const dayInput = document.querySelector(`input[name="${workType}_day"]`);
+        const nightInput = document.querySelector(`input[name="${workType}_night"]`);
+        const midnightInput = document.querySelector(`input[name="${workType}_midnight"]`);
+        
+        if (dayInput) {
+            dayInput.value = day;
+            dayInput.focus();
+            dayInput.select();
+        }
+        if (nightInput) nightInput.value = night;
+        if (midnightInput) midnightInput.value = midnight;
+        
+        // 수정 중임을 알리는 알림
+        alert(`"${workType}" 공종의 금액을 수정합니다. 값을 변경한 후 "저장하기" 버튼을 클릭하세요.`);
+    }
+
+    // 기존 함수는 제거하거나 주석 처리
+    /*
+    function editWorkTypeCosts(workType, day, night, midnight) {
+        // 이전 버전 - 사용 안함
+    }
+    */
+
+    // 공종 삭제
     function deleteWorkType(workType) {
-        if (confirm(workType + ' 공종을 삭제하시겠습니까?')) {
-            location.href = '/admin/labor-cost/delete/' + workType;
+        if (confirm(`"${workType}" 공종을 삭제하시겠습니까?\n\n프로젝트에서 사용 중인 공종은 삭제할 수 없습니다.`)) {
+            location.href = '/admin/labor-cost/delete/' + encodeURIComponent(workType);
         }
     }
 
+    // 잠금 토글
     function toggleLock(workType) {
-        location.href = '/admin/labor-cost/toggle-lock/' + workType;
+        if (confirm(`"${workType}" 공종의 잠금 상태를 변경하시겠습니까?`)) {
+            location.href = '/admin/labor-cost/toggle-lock/' + encodeURIComponent(workType);
+        }
     }
+
+    // 숫자 입력 포맷팅 (천 단위 콤마)
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.cost-input, .new-input[type="number"]').forEach(input => {
+            input.addEventListener('blur', function() {
+                if (this.value) {
+                    const value = parseInt(this.value.replace(/,/g, ''));
+                    if (!isNaN(value)) {
+                        this.value = value;
+                    }
+                }
+            });
+        });
+    });
     </script>
 </body>
 </html>

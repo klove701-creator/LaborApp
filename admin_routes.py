@@ -260,7 +260,7 @@ def register_admin_routes(app, dm):
                 if new_work_type not in dm.labor_costs:
                     dm.labor_costs[new_work_type] = {
                         'day': parse_int(new_day, 0),
-                        'night': parse_int(new_night, 0),
+                        'night': parse_int(night_cost, 0),
                         'midnight': parse_int(new_midnight, 0),
                         'locked': False
                     }
@@ -268,6 +268,134 @@ def register_admin_routes(app, dm):
                 pass
         
         dm.save_data()
+        return redirect(url_for('admin_labor_cost'))
+
+    @app.route('/admin/labor-cost/delete/<work_type>')
+    @login_required(role='admin')
+    def delete_labor_cost(work_type):
+        """공종 삭제"""
+        if work_type in dm.labor_costs:
+            # 해당 공종을 사용하는 프로젝트가 있는지 확인
+            projects_using = []
+            for proj_name, proj_data in dm.projects_data.items():
+                if work_type in proj_data.get('work_types', []):
+                    projects_using.append(proj_name)
+            
+            if projects_using:
+                # 프로젝트에서 사용 중이면 삭제하지 않음
+                error_msg = f'공종 "{work_type}"은(는) 다음 프로젝트에서 사용 중입니다: {", ".join(projects_using)}'
+                return redirect(url_for('admin_labor_cost') + f'?error={error_msg}')
+            
+            # 사용하지 않으면 삭제
+            del dm.labor_costs[work_type]
+            dm.save_data()
+        
+        return redirect(url_for('admin_labor_cost'))
+
+    @app.route('/admin/labor-cost/toggle-lock/<work_type>')
+    @login_required(role='admin')
+    def toggle_lock_work_type(work_type):
+        """공종 잠금 토글"""
+        if work_type in dm.labor_costs:
+            current_lock = dm.labor_costs[work_type].get('locked', False)
+            dm.labor_costs[work_type]['locked'] = not current_lock
+            dm.save_data()
+        
+        return redirect(url_for('admin_labor_cost'))
+
+    # 설정 관리
+    @app.route('/admin/settings')
+    @login_required(role='admin')
+    def admin_settings():
+        # 현재 설정 로드 (기본값 포함)
+        settings = dm.projects_data.get('_system_settings', {})
+        
+        # 기본 설정값
+        default_settings = {
+            'theme': 'dark',  # dark, light
+            'risk_thresholds': {
+                'cost_overrun_warn': 5,      # 5%
+                'cost_overrun_danger': 12,   # 12%
+                'progress_warn_min': 50,     # 50%
+                'progress_danger_min': 20,   # 20%
+                'workers_warn_drop': 40,     # 40%
+                'workers_danger_drop': 60,   # 60%
+                'workers_warn_surge': 40,    # 40%
+                'workers_danger_surge': 60,  # 60%
+            },
+            'notifications': {
+                'email_alerts': False,
+                'dashboard_alerts': True,
+            }
+        }
+        
+        # 기본값과 병합
+        for key, value in default_settings.items():
+            if key not in settings:
+                settings[key] = value
+        
+        return render_template('admin_settings.html', settings=settings)
+
+    @app.route('/admin/settings/save', methods=['POST'])
+    @login_required(role='admin')
+    def save_settings():
+        # 설정 데이터 수집
+        settings = {
+            'theme': request.form.get('theme', 'dark'),
+            'risk_thresholds': {
+                'cost_overrun_warn': parse_int(request.form.get('cost_overrun_warn', '5'), 5),
+                'cost_overrun_danger': parse_int(request.form.get('cost_overrun_danger', '12'), 12),
+                'progress_warn_min': parse_int(request.form.get('progress_warn_min', '50'), 50),
+                'progress_danger_min': parse_int(request.form.get('progress_danger_min', '20'), 20),
+                'workers_warn_drop': parse_int(request.form.get('workers_warn_drop', '40'), 40),
+                'workers_danger_drop': parse_int(request.form.get('workers_danger_drop', '60'), 60),
+                'workers_warn_surge': parse_int(request.form.get('workers_warn_surge', '40'), 40),
+                'workers_danger_surge': parse_int(request.form.get('workers_danger_surge', '60'), 60),
+            },
+            'notifications': {
+                'email_alerts': 'email_alerts' in request.form,
+                'dashboard_alerts': 'dashboard_alerts' in request.form,
+            }
+        }
+        
+        # 시스템 설정을 projects_data에 저장
+        dm.projects_data['_system_settings'] = settings
+        
+        # utils.py의 HEALTH_POLICY 업데이트
+        from utils import HEALTH_POLICY
+        HEALTH_POLICY.update({
+            'COST_OVERRUN_WARN': settings['risk_thresholds']['cost_overrun_warn'] / 100.0,
+            'COST_OVERRUN_DANGER': settings['risk_thresholds']['cost_overrun_danger'] / 100.0,
+            'PROGRESS_WARN_MIN': settings['risk_thresholds']['progress_warn_min'] / 100.0,
+            'PROGRESS_DANGER_MIN': settings['risk_thresholds']['progress_danger_min'] / 100.0,
+            'WORKERS_WARN_DROP': -settings['risk_thresholds']['workers_warn_drop'] / 100.0,
+            'WORKERS_DANGER_DROP': -settings['risk_thresholds']['workers_danger_drop'] / 100.0,
+            'WORKERS_WARN_SURGE': settings['risk_thresholds']['workers_warn_surge'] / 100.0,
+            'WORKERS_DANGER_SURGE': settings['risk_thresholds']['workers_danger_surge'] / 100.0,
+        })
+        
+        dm.save_data()
+        return redirect(url_for('admin_settings'))
+
+    @app.route('/admin/labor-cost/delete/<work_type>')
+    @login_required(role='admin')
+    def delete_labor_cost(work_type):
+        """공종 삭제"""
+        if work_type in dm.labor_costs:
+            # 해당 공종을 사용하는 프로젝트가 있는지 확인
+            projects_using = []
+            for proj_name, proj_data in dm.projects_data.items():
+                if work_type in proj_data.get('work_types', []):
+                    projects_using.append(proj_name)
+            
+            if projects_using:
+                # 프로젝트에서 사용 중이면 삭제하지 않음
+                return redirect(url_for('admin_labor_cost') + f'?error=공종 "{work_type}"은(는) 다음 프로젝트에서 사용 중입니다: {", ".join(projects_using)}')
+            
+            # 사용하지 않으면 삭제
+            del dm.labor_costs[work_type]
+            dm.save_data()
+        
         return redirect(url_for('admin_labor_cost'))
 
     # 리포트
