@@ -7,7 +7,7 @@
 
 1. GitHub에 이 폴더를 새 저장소로 올립니다.
 2. [Railway](https://railway.app) 접속 → **New Project** → **Deploy from GitHub Repo** → 방금 올린 저장소 선택.
-3. 자동으로 Python 빌드가 감지되고 `Procfile`(`web: gunicorn app:app`)로 실행됩니다.
+3. 자동으로 Python 빌드가 감지되고 `Procfile`(`web: gunicorn app:app --bind 0.0.0.0:$PORT`)로 실행됩니다.
 4. **Variables**에서 아래 환경변수를 추가하세요.
    - `SECRET_KEY`: 안전한 임의 문자열
    - (선택) `CORS_ORIGINS`: `*` 또는 본인 도메인

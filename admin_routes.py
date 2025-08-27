@@ -260,7 +260,7 @@ def register_admin_routes(app, dm):
                 if new_work_type not in dm.labor_costs:
                     dm.labor_costs[new_work_type] = {
                         'day': parse_int(new_day, 0),
-                        'night': parse_int(night_cost, 0),
+                        'night': parse_int(new_night, 0),
                         'midnight': parse_int(new_midnight, 0),
                         'locked': False
                     }

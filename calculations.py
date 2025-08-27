@@ -176,6 +176,20 @@ def calculate_project_summary(project_name, current_date):
     for work_type in work_types:
         # 오늘 데이터
         today_data = daily_data.get(current_date, {}).get(work_type, {})
+        today_progress = parse_float(today_data.get('progress', 0))
+
+        # 이전까지의 최대 누적 공정률(이전 날짜들의 누적치)
+        previous_max_progress = 0.0
+        for date_key in sorted(daily_data.keys()):
+            if date_key < current_date and work_type in daily_data[date_key]:
+                progress_val = parse_float(
+                    daily_data[date_key][work_type].get('progress', 0)
+                )
+                if progress_val > previous_max_progress:
+                    previous_max_progress = progress_val
+
+        # 누계 공정률 = 이전 누계 + 오늘 증가분
+        cumulative_progress = previous_max_progress + today_progress
         
         # 실제 누계 계산 (모든 날짜 합계)
         cumulative_total = 0
@@ -201,10 +215,11 @@ def calculate_project_summary(project_name, current_date):
             'cumulative_day': cumulative_day,
             'cumulative_night': cumulative_night,
             'cumulative_midnight': cumulative_midnight,
-            'today_progress': today_data.get('progress', 0),
-            'cumulative_progress': today_data.get('progress', 0)
+            'today_progress': today_progress,
+            'cumulative_progress': cumulative_progress,
         })
     return summary
+
 
 def calculate_project_work_summary(project_name):
     """프로젝트별 공종 현황 계산 (엑셀 테이블용)"""
