@@ -223,34 +223,6 @@
     </style>
 
     <script>
-    // 숫자 입력 시 천 단위 콤마 자동 추가
-    function formatNumberInput(input) {
-        let value = input.value.replace(/[^\d]/g, ''); // 숫자만 추출
-        if (value) {
-            // 천 단위마다 콤마 추가
-            value = parseInt(value).toLocaleString();
-        }
-        input.value = value;
-    }
-
-    // 입력 완료 시 유효성 검사
-    function validateNumberInput(input) {
-        let value = input.value.replace(/[^\d]/g, '');
-        if (!value) {
-            input.value = '';
-            return;
-        }
-        
-        const numValue = parseInt(value);
-        if (numValue < 0) {
-            alert('음수값은 입력할 수 없습니다.');
-            input.value = '';
-            return;
-        }
-        
-        // 최종 포맷팅
-        input.value = numValue.toLocaleString();
-    }
 
     // 공종명 편집
     function editWorkType(oldName, element) {
@@ -420,5 +392,7 @@
         });
     });
     </script>
+    <script src="{{ url_for('static', filename='js/currency-format.js') }}"></script>
+</body>
 </body>
 </html>
