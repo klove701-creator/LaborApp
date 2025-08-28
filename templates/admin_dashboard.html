@@ -72,13 +72,14 @@
       /* 관리메뉴 5열 그리드 - 전체 너비 사용하도록 수정 */
       .admin-menu-section {
         width: 100%;
+        margin: 0 -20px; /* container의 padding 상쇄 */
+        padding: 0 20px;
       }
       .admin-menu {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 16px;
-        margin-top: 16px;
+        display: flex;
         width: 100%;
+        gap: 1%;
+        margin-top: 16px;
       }
       @media (max-width: 1400px) { .admin-menu { grid-template-columns: repeat(3, 1fr); } }
       @media (max-width: 900px)  { .admin-menu { grid-template-columns: repeat(2, 1fr); } }
@@ -94,7 +95,8 @@
         flex-direction: column;
         justify-content: space-between;
         min-height: 120px;
-        width: 100%;
+        flex: 1;
+        box-sizing: border-box;
       }
       .menu-card h3 { margin: 0 0 8px 0; color: #e5e7eb; }
       .menu-card p  { flex: 1; font-size: 14px; color: #9ca3af; margin: 0 0 12px 0; }
