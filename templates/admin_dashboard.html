@@ -69,12 +69,16 @@
       .progress-fill{ height:100%; width:0%; transition: width .6s ease; }
       .progress-text{ display:inline-block; margin-left:8px; font-size:12px; color:#cbd5e1; }
 
-      /* 관리메뉴 5열 그리드 (설정 추가) */
+      /* 관리메뉴 5열 그리드 - 전체 너비 사용하도록 수정 */
+      .admin-menu-section {
+        width: 100%;
+      }
       .admin-menu {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
         gap: 16px;
         margin-top: 16px;
+        width: 100%;
       }
       @media (max-width: 1400px) { .admin-menu { grid-template-columns: repeat(3, 1fr); } }
       @media (max-width: 900px)  { .admin-menu { grid-template-columns: repeat(2, 1fr); } }
@@ -90,6 +94,7 @@
         flex-direction: column;
         justify-content: space-between;
         min-height: 120px;
+        width: 100%;
       }
       .menu-card h3 { margin: 0 0 8px 0; color: #e5e7eb; }
       .menu-card p  { flex: 1; font-size: 14px; color: #9ca3af; margin: 0 0 12px 0; }
@@ -253,7 +258,7 @@
             </div>
         </div>
 
-        <!-- 관리 메뉴 (5열 그리드 - 설정 추가) -->
+        <!-- 관리 메뉴 (5열 그리드 - 전체 너비 사용) -->
         <div class="admin-menu-section">
             <h2>관리 메뉴</h2>
             <div class="admin-menu">
@@ -291,13 +296,22 @@
     </div>
 
     <script>
-        // 막대 게이지 채우기 (0% 진행률은 width: 0%로 표시)
+        // 막대 게이지 채우기 (0% 진행률은 완전히 숨김)
         document.addEventListener('DOMContentLoaded', function() {
           document.querySelectorAll('.progress-fill, .pg-fill').forEach(function(elem) {
             const p = parseFloat(elem.getAttribute('data-progress') || '0');
-            // 0% 이하는 표시 안함, 100% 초과는 100%로 제한
-            const clamped = Math.max(0, Math.min(100, p));
-            elem.style.width = clamped + '%';
+            
+            // 정확히 0%이면 완전히 숨김
+            if (p <= 0) {
+              elem.style.width = '0%';
+              elem.style.minWidth = '0px';  // 최소 너비 제거
+              elem.style.opacity = '0';     // 완전 투명
+            } else {
+              const clamped = Math.min(100, p);
+              elem.style.width = clamped + '%';
+              elem.style.minWidth = 'auto';
+              elem.style.opacity = '1';
+            }
           });
         });
 
@@ -308,6 +322,5 @@
         }
     </script>
     <script src="{{ url_for('static', filename='js/currency-format.js') }}"></script>
-</body>
 </body>
 </html>
