@@ -21,7 +21,8 @@ try:
 except Exception as e:
     print(f"❌ 데이터베이스 연결 실패: {e}")
     exit(1)
-
+from utils import set_data_manager
+set_data_manager(dm)
 # 데이터 새로고침 제거 (PostgreSQL은 실시간 연결)
 # @app.before_request 제거
 
