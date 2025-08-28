@@ -1,4 +1,4 @@
-# database.py - Supabase PostgreSQL 연결
+# database.py - Supabase PostgreSQL 연결 (수정됨)
 import os
 import psycopg2
 import json
@@ -22,6 +22,10 @@ class DatabaseManager:
                 self.database_url,
                 cursor_factory=RealDictCursor
             )
+            # 스키마 경로 설정
+            with self.conn.cursor() as cur:
+                cur.execute("SET search_path TO public")
+                self.conn.commit()
             print("✅ Supabase PostgreSQL 연결 성공")
         except Exception as e:
             print(f"❌ 데이터베이스 연결 실패: {e}")
@@ -37,26 +41,31 @@ class DatabaseManager:
     def get_users(self):
         """모든 사용자 조회"""
         with self.get_cursor() as cur:
-            cur.execute("""
-                SELECT username, password, role, status, created_date, projects
-                FROM users
-            """)
-            users_data = {}
-            for row in cur.fetchall():
-                users_data[row['username']] = {
-                    'password': row['password'],
-                    'role': row['role'],
-                    'status': row['status'],
-                    'created_date': str(row['created_date']),
-                    'projects': row['projects'] or []
-                }
-            return users_data
+            try:
+                cur.execute("""
+                    SELECT username, password, role, status, created_date, projects
+                    FROM public.users
+                """)
+                users_data = {}
+                for row in cur.fetchall():
+                    users_data[row['username']] = {
+                        'password': row['password'],
+                        'role': row['role'],
+                        'status': row['status'],
+                        'created_date': str(row['created_date']) if row['created_date'] else '',
+                        'projects': row['projects'] or []
+                    }
+                return users_data
+            except Exception as e:
+                print(f"❌ 사용자 조회 실패: {e}")
+                # 테이블이 없으면 빈 딕셔너리 반환
+                return {}
     
-    def create_user(self, username, password, role, projects=None, status='active'):
+    def create_user(self, username, password, role='user', projects=None, status='active'):
         """사용자 생성"""
         with self.get_cursor() as cur:
             cur.execute("""
-                INSERT INTO users (username, password, role, projects, status)
+                INSERT INTO public.users (username, password, role, projects, status)
                 VALUES (%s, %s, %s, %s, %s)
             """, (username, password, role, projects or [], status))
             self.conn.commit()
@@ -86,7 +95,7 @@ class DatabaseManager:
                 values.append(status)
             
             if updates:
-                query = f"UPDATE users SET {', '.join(updates)} WHERE username = %s"
+                query = f"UPDATE public.users SET {', '.join(updates)} WHERE username = %s"
                 values.append(old_username)
                 cur.execute(query, values)
                 self.conn.commit()
@@ -94,61 +103,69 @@ class DatabaseManager:
     def delete_user(self, username):
         """사용자 삭제"""
         with self.get_cursor() as cur:
-            cur.execute("DELETE FROM users WHERE username = %s", (username,))
+            cur.execute("DELETE FROM public.users WHERE username = %s", (username,))
             self.conn.commit()
     
     # ===== 프로젝트 관리 =====
     def get_projects(self):
         """모든 프로젝트 조회"""
         with self.get_cursor() as cur:
-            cur.execute("""
-                SELECT project_name, status, created_date, work_types, contracts, companies
-                FROM projects
-            """)
-            projects_data = {}
-            for row in cur.fetchall():
-                projects_data[row['project_name']] = {
-                    'status': row['status'],
-                    'created_date': str(row['created_date']),
-                    'work_types': row['work_types'] or [],
-                    'contracts': row['contracts'] or {},
-                    'companies': row['companies'] or {},
-                    'daily_data': self._get_project_daily_data(row['project_name'])
-                }
-            return projects_data
+            try:
+                cur.execute("""
+                    SELECT project_name, status, created_date, work_types, contracts, companies
+                    FROM public.projects
+                """)
+                projects_data = {}
+                for row in cur.fetchall():
+                    projects_data[row['project_name']] = {
+                        'status': row['status'],
+                        'created_date': str(row['created_date']) if row['created_date'] else '',
+                        'work_types': row['work_types'] or [],
+                        'contracts': row['contracts'] or {},
+                        'companies': row['companies'] or {},
+                        'daily_data': self._get_project_daily_data(row['project_name'])
+                    }
+                return projects_data
+            except Exception as e:
+                print(f"❌ 프로젝트 조회 실패: {e}")
+                return {}
     
     def _get_project_daily_data(self, project_name):
         """프로젝트의 일일 데이터 조회"""
         with self.get_cursor() as cur:
-            cur.execute("""
-                SELECT work_date, work_type, day_workers, night_workers, 
-                       midnight_workers, total_workers, progress
-                FROM daily_data 
-                WHERE project_name = %s
-                ORDER BY work_date, work_type
-            """, (project_name,))
-            
-            daily_data = {}
-            for row in cur.fetchall():
-                date_str = str(row['work_date'])
-                if date_str not in daily_data:
-                    daily_data[date_str] = {}
+            try:
+                cur.execute("""
+                    SELECT work_date, work_type, day_workers, night_workers, 
+                           midnight_workers, total_workers, progress
+                    FROM public.daily_data 
+                    WHERE project_name = %s
+                    ORDER BY work_date, work_type
+                """, (project_name,))
                 
-                daily_data[date_str][row['work_type']] = {
-                    'day': row['day_workers'],
-                    'night': row['night_workers'],
-                    'midnight': row['midnight_workers'],
-                    'total': row['total_workers'],
-                    'progress': float(row['progress'])
-                }
-            return daily_data
+                daily_data = {}
+                for row in cur.fetchall():
+                    date_str = str(row['work_date'])
+                    if date_str not in daily_data:
+                        daily_data[date_str] = {}
+                    
+                    daily_data[date_str][row['work_type']] = {
+                        'day': row['day_workers'],
+                        'night': row['night_workers'],
+                        'midnight': row['midnight_workers'],
+                        'total': row['total_workers'],
+                        'progress': float(row['progress']) if row['progress'] else 0.0
+                    }
+                return daily_data
+            except Exception as e:
+                print(f"❌ 일일 데이터 조회 실패: {e}")
+                return {}
     
     def create_project(self, project_name, work_types, contracts=None, 
                       companies=None, status='active'):
         """프로젝트 생성"""
         with self.get_cursor() as cur:
             cur.execute("""
-                INSERT INTO projects (project_name, work_types, contracts, companies, status)
+                INSERT INTO public.projects (project_name, work_types, contracts, companies, status)
                 VALUES (%s, %s, %s, %s, %s)
             """, (project_name, work_types, 
                   json.dumps(contracts or {}), 
@@ -171,7 +188,7 @@ class DatabaseManager:
                     values.append(value)
             
             if updates:
-                query = f"UPDATE projects SET {', '.join(updates)} WHERE project_name = %s"
+                query = f"UPDATE public.projects SET {', '.join(updates)} WHERE project_name = %s"
                 values.append(project_name)
                 cur.execute(query, values)
                 self.conn.commit()
@@ -180,9 +197,9 @@ class DatabaseManager:
         """프로젝트 및 관련 일일 데이터 삭제"""
         with self.get_cursor() as cur:
             # 일일 데이터 먼저 삭제
-            cur.execute("DELETE FROM daily_data WHERE project_name = %s", (project_name,))
+            cur.execute("DELETE FROM public.daily_data WHERE project_name = %s", (project_name,))
             # 프로젝트 삭제
-            cur.execute("DELETE FROM projects WHERE project_name = %s", (project_name,))
+            cur.execute("DELETE FROM public.projects WHERE project_name = %s", (project_name,))
             self.conn.commit()
     
     # ===== 일일 데이터 관리 =====
@@ -193,7 +210,7 @@ class DatabaseManager:
         
         with self.get_cursor() as cur:
             cur.execute("""
-                INSERT INTO daily_data 
+                INSERT INTO public.daily_data 
                 (project_name, work_date, work_type, day_workers, night_workers, 
                  midnight_workers, total_workers, progress, updated_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
@@ -213,25 +230,29 @@ class DatabaseManager:
     def get_labor_costs(self):
         """모든 노무단가 조회"""
         with self.get_cursor() as cur:
-            cur.execute("""
-                SELECT work_type, day_cost, night_cost, midnight_cost, locked
-                FROM labor_costs
-            """)
-            labor_costs = {}
-            for row in cur.fetchall():
-                labor_costs[row['work_type']] = {
-                    'day': row['day_cost'],
-                    'night': row['night_cost'],
-                    'midnight': row['midnight_cost'],
-                    'locked': row['locked']
-                }
-            return labor_costs
+            try:
+                cur.execute("""
+                    SELECT work_type, day_cost, night_cost, midnight_cost, locked
+                    FROM public.labor_costs
+                """)
+                labor_costs = {}
+                for row in cur.fetchall():
+                    labor_costs[row['work_type']] = {
+                        'day': row['day_cost'],
+                        'night': row['night_cost'],
+                        'midnight': row['midnight_cost'],
+                        'locked': row['locked']
+                    }
+                return labor_costs
+            except Exception as e:
+                print(f"❌ 노무단가 조회 실패: {e}")
+                return {}
     
     def save_labor_cost(self, work_type, day_cost, night_cost, midnight_cost, locked=False):
         """노무단가 저장/업데이트"""
         with self.get_cursor() as cur:
             cur.execute("""
-                INSERT INTO labor_costs (work_type, day_cost, night_cost, midnight_cost, locked)
+                INSERT INTO public.labor_costs (work_type, day_cost, night_cost, midnight_cost, locked)
                 VALUES (%s, %s, %s, %s, %s)
                 ON CONFLICT (work_type)
                 DO UPDATE SET
@@ -245,7 +266,7 @@ class DatabaseManager:
     def delete_labor_cost(self, work_type):
         """노무단가 삭제"""
         with self.get_cursor() as cur:
-            cur.execute("DELETE FROM labor_costs WHERE work_type = %s", (work_type,))
+            cur.execute("DELETE FROM public.labor_costs WHERE work_type = %s", (work_type,))
             self.conn.commit()
     
     def close(self):
