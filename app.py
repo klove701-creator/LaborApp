@@ -52,20 +52,24 @@ def login_post():
     username = request.form['username']
     password = request.form['password']
 
-    users = dm.get_users()
-    if username in users and users[username]['password'] == password:
-        if users[username].get('status') == 'inactive':
-            return render_template('login.html', error='계정이 비활성화되었습니다.')
-        
-        session['username'] = username
-        session['role'] = users[username]['role']
-        
-        if users[username]['role'] == 'admin':
-            return redirect(url_for('admin_dashboard'))
+    try:
+        users = dm.get_users()
+        if username in users and users[username]['password'] == password:
+            if users[username].get('status') == 'inactive':
+                return render_template('login.html', error='계정이 비활성화되었습니다.')
+            
+            session['username'] = username
+            session['role'] = users[username]['role']
+            
+            if users[username]['role'] == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            else:
+                return redirect(url_for('user_projects'))
         else:
-            return redirect(url_for('user_projects'))
-    else:
-        return render_template('login.html', error='아이디 또는 비밀번호가 틀렸습니다.')
+            return render_template('login.html', error='아이디 또는 비밀번호가 틀렸습니다.')
+    except Exception as e:
+        print(f"로그인 에러: {e}")
+        return render_template('login.html', error='데이터베이스 연결 문제가 발생했습니다.')
 
 @app.route('/logout')
 def logout():
