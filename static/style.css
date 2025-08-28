@@ -475,6 +475,15 @@ input[type="date"]:focus {
     color: #ffa500 !important;
 }
 
+.summary-total td {
+    font-weight: 700;
+    background: #1a1a1a;
+}
+
+.summary-total .work-type-name {
+    background: #1a1a1a !important;
+}
+
 /* ê´€ë¦¬ìž ë©”ë‰´ */
 .admin-menu {
     display: grid;

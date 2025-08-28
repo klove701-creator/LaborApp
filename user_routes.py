@@ -31,12 +31,35 @@ def register_user_routes(app, dm):
         today_data = project_data.get('daily_data', {}).get(selected_date, {})
         total_summary = calculate_project_summary(project_name, selected_date)
 
+# 전체 합계 및 평균 공정률 계산
+        summary_totals = {}
+        if total_summary:
+            summary_totals = {
+                'today_day': sum(item['today_day'] for item in total_summary),
+                'today_night': sum(item['today_night'] for item in total_summary),
+                'today_midnight': sum(item['today_midnight'] for item in total_summary),
+                'today': sum(item['today'] for item in total_summary),
+                'cumulative_day': sum(item['cumulative_day'] for item in total_summary),
+                'cumulative_night': sum(item['cumulative_night'] for item in total_summary),
+                'cumulative_midnight': sum(item['cumulative_midnight'] for item in total_summary),
+                'cumulative': sum(item['cumulative'] for item in total_summary),
+            }
+
+            work_type_count = len(total_summary)
+            if work_type_count > 0:
+                avg_progress = sum(item['cumulative_progress'] for item in total_summary) / work_type_count
+            else:
+                avg_progress = 0
+
+            summary_totals['cumulative_progress'] = avg_progress
+
         return render_template('project_input.html',
                                project_name=project_name,
                                work_types=work_types,
                                today_data=today_data,
                                selected_date=selected_date,
-                               total_summary=total_summary)
+                               total_summary=total_summary,
+                               summary_totals=summary_totals)
 
     @app.route('/project/<project_name>/dates-with-data')
     @login_required(role='user')

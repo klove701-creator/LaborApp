@@ -136,19 +136,33 @@
           </thead>
           <tbody>
             {% for item in total_summary %}
-            <tr>
-              <td class="work-type-name">{{ item.work_type }}</td>
-              <td>{{ item.today_day }}</td>
-              <td>{{ item.today_night }}</td>
-              <td>{{ item.today_midnight }}</td>
-              <td class="total-col">{{ item.today }}</td>
-              <td>{{ item.cumulative_day }}</td>
-              <td>{{ item.cumulative_night }}</td>
-              <td>{{ item.cumulative_midnight }}</td>
-              <td class="total-col">{{ item.cumulative }}</td>
-              <td class="progress-col">{{ item.cumulative_progress }}%</td>
-            </tr>
-            {% endfor %}
+          <tr>
+            <td class="work-type-name">{{ item.work_type }}</td>
+            <td>{{ item.today_day }}</td>
+            <td>{{ item.today_night }}</td>
+            <td>{{ item.today_midnight }}</td>
+            <td class="total-col">{{ item.today }}</td>
+            <td>{{ item.cumulative_day }}</td>
+            <td>{{ item.cumulative_night }}</td>
+            <td>{{ item.cumulative_midnight }}</td>
+            <td class="total-col">{{ item.cumulative }}</td>
+            <td class="progress-col">{{ item.cumulative_progress }}%</td>
+          </tr>
+          {% endfor %}
+          {% if summary_totals %}
+          <tr class="summary-total">
+            <td class="work-type-name">합계</td>
+            <td>{{ summary_totals.today_day }}</td>
+            <td>{{ summary_totals.today_night }}</td>
+            <td>{{ summary_totals.today_midnight }}</td>
+            <td class="total-col">{{ summary_totals.today }}</td>
+            <td>{{ summary_totals.cumulative_day }}</td>
+            <td>{{ summary_totals.cumulative_night }}</td>
+            <td>{{ summary_totals.cumulative_midnight }}</td>
+            <td class="total-col">{{ summary_totals.cumulative }}</td>
+            <td class="progress-col">{{ summary_totals.cumulative_progress|round(1) }}%</td>
+          </tr>
+          {% endif %}
           </tbody>
         </table>
       </div>
