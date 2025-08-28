@@ -1,4 +1,4 @@
-# calculations.py - 계산 관련 로직들
+# calculations.py - 계산 관련 로직들 (PostgreSQL 버전)
 from utils import HEALTH_POLICY, parse_int, parse_float
 
 def _avg_progress(project_data):
@@ -33,7 +33,7 @@ def _today_vs_recent_workers(project_data):
         today_total += int(wd.get('total', 0) or 0)
 
     # 최근 N일 평균(오늘 제외)
-    N = HEALTH_POLICY["WORKERS_WINDOW_DAYS"]
+    N = HEALTH_POLICY.get("WORKERS_WINDOW_DAYS", 7)  # 기본값 추가
     prev_keys = dates[:-1][-N:] if len(dates) > 1 else []
     sums = []
     for k in prev_keys:
@@ -50,9 +50,8 @@ def _today_vs_recent_workers(project_data):
 
     return delta_ratio, today_total, recent_avg
 
-def determine_health(project_data):
+def determine_health(project_data, labor_costs):
     """회사 기준(HEALTH_POLICY)에 따른 상태 산정"""
-    from app import dm  # 순환 import 방지
     
     contracts = project_data.get('contracts', {}) or {}
     daily_data = project_data.get('daily_data', {}) or {}
@@ -70,7 +69,7 @@ def determine_health(project_data):
                 wd = date_data[wt]
                 cum_total += int(wd.get('total', 0) or 0)
         # 단가(주간 기준 사용)
-        rate = (dm.labor_costs.get(wt, {}) or {}).get('day', 0) or 0
+        rate = (labor_costs.get(wt, {}) or {}).get('day', 0) or 0
         total_labor_cost += cum_total * int(rate)
 
     # 비용 초과율
@@ -127,8 +126,12 @@ def calculate_dashboard_data():
     """관리자 대시보드용 데이터 계산 (회사 기준 상태 포함)"""
     from app import dm  # 순환 import 방지
     
+    # PostgreSQL 방식으로 데이터 조회
+    projects_data = dm.get_projects()
+    labor_costs = dm.get_labor_costs()
+    
     dashboard = []
-    for project_name, project_data in dm.projects_data.items():
+    for project_name, project_data in projects_data.items():
         work_types = project_data.get('work_types', [])
         daily_data = project_data.get('daily_data', {})
 
@@ -149,7 +152,7 @@ def calculate_dashboard_data():
                 total_workers_today += parse_int(today_data.get('total', 0), 0)
 
         # 회사 기준 상태 판단
-        status, status_color, meta = determine_health(project_data)
+        status, status_color, meta = determine_health(project_data, labor_costs)
 
         dashboard.append({
             'project_name': project_name,
@@ -168,7 +171,9 @@ def calculate_dashboard_data():
 def calculate_project_summary(project_name, current_date):
     from app import dm  # 순환 import 방지
     
-    project_data = dm.projects_data.get(project_name, {})
+    # PostgreSQL 방식으로 데이터 조회
+    projects_data = dm.get_projects()
+    project_data = projects_data.get(project_name, {})
     daily_data = project_data.get('daily_data', {})
     work_types = project_data.get('work_types', [])
     summary = []
@@ -225,7 +230,11 @@ def calculate_project_work_summary(project_name):
     """프로젝트별 공종 현황 계산 (엑셀 테이블용)"""
     from app import dm  # 순환 import 방지
     
-    project_data = dm.projects_data.get(project_name, {})
+    # PostgreSQL 방식으로 데이터 조회
+    projects_data = dm.get_projects()
+    labor_costs = dm.get_labor_costs()
+    
+    project_data = projects_data.get(project_name, {})
     work_types = project_data.get('work_types', [])
     daily_data = project_data.get('daily_data', {})
     contracts = project_data.get('contracts', {})
@@ -240,7 +249,7 @@ def calculate_project_work_summary(project_name):
                 total_workers += date_data[work_type].get('total', 0)
         
         # 노무단가
-        labor_rate = (dm.labor_costs.get(work_type, {}) or {}).get('day', 0)
+        labor_rate = (labor_costs.get(work_type, {}) or {}).get('day', 0)
         # 계약노무비
         contract_amount = contracts.get(work_type, 0)
         # 투입노무비
