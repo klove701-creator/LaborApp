@@ -134,6 +134,7 @@ def calculate_dashboard_data():
     for project_name, project_data in projects_data.items():
         work_types = project_data.get('work_types', [])
         daily_data = project_data.get('daily_data', {})
+        contracts = project_data.get('contracts', {})
 
         # 최근 날짜
         recent_date = None
@@ -151,6 +152,40 @@ def calculate_dashboard_data():
                 today_data = today_pack.get(work_type, {})
                 total_workers_today += parse_int(today_data.get('total', 0), 0)
 
+        # 누계 인원 계산
+        cumulative_workers = 0
+        for date_data in daily_data.values():
+            for work_type in work_types:
+                if work_type in date_data:
+                    cumulative_workers += date_data[work_type].get('total', 0)
+
+        # 총 인원 계산 (계약금 / 노무단가)
+        total_planned_workers = 0
+        for work_type in work_types:
+            contract_amount = contracts.get(work_type, 0)
+            labor_rate = labor_costs.get(work_type, {}).get('day', 0)
+            if labor_rate > 0:
+                total_planned_workers += contract_amount / labor_rate
+
+        # 진행률 = 누계인원 / 총인원 * 100
+        progress_rate = 0.0
+        if total_planned_workers > 0:
+            progress_rate = (cumulative_workers / total_planned_workers) * 100
+            progress_rate = min(100, progress_rate)  # 100% 초과 방지
+
+        # 공정률 = 누계 공정률 (각 공종 최신 공정률 평균)
+        schedule_rate = 0.0
+        progress_count = 0
+        if recent_date and recent_date in daily_data:
+            for work_type in work_types:
+                if work_type in daily_data[recent_date]:
+                    progress_val = daily_data[recent_date][work_type].get('progress', 0)
+                    schedule_rate += progress_val
+                    progress_count += 1
+        
+        if progress_count > 0:
+            schedule_rate = schedule_rate / progress_count
+
         # 회사 기준 상태 판단
         status, status_color, meta = determine_health(project_data, labor_costs)
 
@@ -158,9 +193,9 @@ def calculate_dashboard_data():
             'project_name': project_name,
             'recent_date': recent_date or '데이터 없음',
             'today_workers': total_workers_today,
-            'cumulative_workers': total_workers_today * 10,  # TODO: 실제 누계 인원 계산으로 교체 가능
-            'schedule_rate': meta.get('avg_progress', 0.0),
-            'avg_progress': meta.get('avg_progress', 0.0),
+            'cumulative_workers': cumulative_workers,
+            'schedule_rate': schedule_rate,
+            'avg_progress': progress_rate,
             'work_count': len(work_types),
             'status': status,
             'status_color': status_color,
@@ -177,6 +212,12 @@ def calculate_project_summary(project_name, current_date):
     daily_data = project_data.get('daily_data', {})
     work_types = project_data.get('work_types', [])
     summary = []
+    
+    # 합계를 위한 변수들
+    total_today_workers = 0
+    total_cumulative_workers = 0
+    total_today_progress = 0
+    work_type_count = 0
     
     for work_type in work_types:
         # 오늘 데이터
@@ -210,6 +251,13 @@ def calculate_project_summary(project_name, current_date):
                 cumulative_night += work_data.get('night', 0)
                 cumulative_midnight += work_data.get('midnight', 0)
         
+        # 합계 누적
+        total_today_workers += today_data.get('total', 0)
+        total_cumulative_workers += cumulative_total
+        total_today_progress += today_progress
+        if work_type in daily_data.get(current_date, {}):
+            work_type_count += 1
+        
         summary.append({
             'work_type': work_type,
             'today': today_data.get('total', 0),
@@ -223,6 +271,26 @@ def calculate_project_summary(project_name, current_date):
             'today_progress': today_progress,
             'cumulative_progress': cumulative_progress,
         })
+    
+    # 합계 공정률 계산 (공종별 오늘 공정률의 평균)
+    avg_today_progress = total_today_progress / work_type_count if work_type_count > 0 else 0
+    
+    # 합계 행 추가
+    summary.append({
+        'work_type': '합계',
+        'today': total_today_workers,
+        'today_day': sum(s['today_day'] for s in summary if s['work_type'] != '합계'),
+        'today_night': sum(s['today_night'] for s in summary if s['work_type'] != '합계'),
+        'today_midnight': sum(s['today_midnight'] for s in summary if s['work_type'] != '합계'),
+        'cumulative': total_cumulative_workers,
+        'cumulative_day': sum(s['cumulative_day'] for s in summary if s['work_type'] != '합계'),
+        'cumulative_night': sum(s['cumulative_night'] for s in summary if s['work_type'] != '합계'),
+        'cumulative_midnight': sum(s['cumulative_midnight'] for s in summary if s['work_type'] != '합계'),
+        'today_progress': avg_today_progress,
+        'cumulative_progress': 0,  # 누계 공정률은 합계에서 의미가 없음
+        'is_total': True
+    })
+    
     return summary
 
 
