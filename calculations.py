@@ -214,7 +214,13 @@ def calculate_project_summary(project_name, current_date):
     summary = []
     
     # 합계를 위한 변수들
+    total_today_day = 0
+    total_today_night = 0
+    total_today_midnight = 0
     total_today_workers = 0
+    total_cumulative_day = 0
+    total_cumulative_night = 0
+    total_cumulative_midnight = 0
     total_cumulative_workers = 0
     total_today_progress = 0
     work_type_count = 0
@@ -252,18 +258,28 @@ def calculate_project_summary(project_name, current_date):
                 cumulative_midnight += work_data.get('midnight', 0)
         
         # 합계 누적
-        total_today_workers += today_data.get('total', 0)
+        today_day = today_data.get('day', 0)
+        today_night = today_data.get('night', 0)
+        today_midnight = today_data.get('midnight', 0)
+        today_total = today_data.get('total', 0)
+        
+        total_today_day += today_day
+        total_today_night += today_night
+        total_today_midnight += today_midnight
+        total_today_workers += today_total
+        total_cumulative_day += cumulative_day
+        total_cumulative_night += cumulative_night
+        total_cumulative_midnight += cumulative_midnight
         total_cumulative_workers += cumulative_total
         total_today_progress += today_progress
-        if work_type in daily_data.get(current_date, {}):
-            work_type_count += 1
+        work_type_count += 1
         
         summary.append({
             'work_type': work_type,
-            'today': today_data.get('total', 0),
-            'today_day': today_data.get('day', 0),
-            'today_night': today_data.get('night', 0),
-            'today_midnight': today_data.get('midnight', 0),
+            'today': today_total,
+            'today_day': today_day,
+            'today_night': today_night,
+            'today_midnight': today_midnight,
             'cumulative': cumulative_total,
             'cumulative_day': cumulative_day,
             'cumulative_night': cumulative_night,
@@ -279,13 +295,13 @@ def calculate_project_summary(project_name, current_date):
     summary.append({
         'work_type': '합계',
         'today': total_today_workers,
-        'today_day': sum(s['today_day'] for s in summary if s['work_type'] != '합계'),
-        'today_night': sum(s['today_night'] for s in summary if s['work_type'] != '합계'),
-        'today_midnight': sum(s['today_midnight'] for s in summary if s['work_type'] != '합계'),
+        'today_day': total_today_day,
+        'today_night': total_today_night,
+        'today_midnight': total_today_midnight,
         'cumulative': total_cumulative_workers,
-        'cumulative_day': sum(s['cumulative_day'] for s in summary if s['work_type'] != '합계'),
-        'cumulative_night': sum(s['cumulative_night'] for s in summary if s['work_type'] != '합계'),
-        'cumulative_midnight': sum(s['cumulative_midnight'] for s in summary if s['work_type'] != '합계'),
+        'cumulative_day': total_cumulative_day,
+        'cumulative_night': total_cumulative_night,
+        'cumulative_midnight': total_cumulative_midnight,
         'today_progress': avg_today_progress,
         'cumulative_progress': 0,  # 누계 공정률은 합계에서 의미가 없음
         'is_total': True
