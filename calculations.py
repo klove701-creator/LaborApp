@@ -244,7 +244,7 @@ def calculate_project_summary(project_name, current_date):
         cumulative_midnight = 0
         
         for date_key, date_data in daily_data.items():
-            if work_type in date_data:
+            if date_key <= current_date and work_type in date_data:  # 오늘까지만 포함
                 work_data = date_data[work_type]
                 cumulative_total += work_data.get('total', 0)
                 cumulative_day += work_data.get('day', 0)
