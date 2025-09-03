@@ -1,5 +1,5 @@
 # app.py - Railway 배포용 메인 애플리케이션
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_from_directory
 from werkzeug.middleware.proxy_fix import ProxyFix
 from datetime import date, datetime
 import os
@@ -115,12 +115,7 @@ def health_check():
 
 # ===== API와 React SPA 통합 라우팅 =====
 
-# API 라우트들
-from api_app import app as api_app
-from flask import send_from_directory
-import os
-
-# API 라우트 복사 (JWT 인증)
+# JWT 및 CORS를 위한 추가 import  
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from datetime import timedelta
