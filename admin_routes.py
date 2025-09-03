@@ -343,18 +343,19 @@ def register_admin_routes(app, dm):
     @app.route('/admin/settings')
     @login_required(role='admin')
     def admin_settings():
-        # PostgreSQL에서는 별도 시스템 설정 테이블 필요 - 일단 기본값 사용
+        # HEALTH_POLICY에서 현재 설정값 가져오기
+        from utils import HEALTH_POLICY
         settings = {
             'theme': 'dark',
             'risk_thresholds': {
-                'cost_overrun_warn': 5,
-                'cost_overrun_danger': 12,
-                'progress_warn_min': 50,
-                'progress_danger_min': 20,
-                'workers_warn_drop': 40,
-                'workers_danger_drop': 60,
-                'workers_warn_surge': 40,
-                'workers_danger_surge': 60,
+                'cost_overrun_warn': int(HEALTH_POLICY['COST_OVERRUN_WARN'] * 100),
+                'cost_overrun_danger': int(HEALTH_POLICY['COST_OVERRUN_DANGER'] * 100),
+                'progress_warn_min': int(HEALTH_POLICY['PROGRESS_WARN_MIN'] * 100),
+                'progress_danger_min': int(HEALTH_POLICY['PROGRESS_DANGER_MIN'] * 100),
+                'workers_warn_drop': int(abs(HEALTH_POLICY['WORKERS_WARN_DROP']) * 100),
+                'workers_danger_drop': int(abs(HEALTH_POLICY['WORKERS_DANGER_DROP']) * 100),
+                'workers_warn_surge': int(HEALTH_POLICY['WORKERS_WARN_SURGE'] * 100),
+                'workers_danger_surge': int(HEALTH_POLICY['WORKERS_DANGER_SURGE'] * 100),
             },
             'notifications': {
                 'email_alerts': False,
@@ -399,10 +400,19 @@ def register_admin_routes(app, dm):
             'WORKERS_DANGER_SURGE': settings['risk_thresholds']['workers_danger_surge'] / 100.0,
         })
         
-        # PostgreSQL에 설정 저장 로직 필요 (나중에 구현)
-        print("설정이 업데이트되었습니다.")
-        
-        return redirect(url_for('admin_settings'))
+        try:
+            # PostgreSQL에 설정 저장 로직 필요 (나중에 구현)
+            print("설정이 업데이트되었습니다.")
+            
+            # 성공 메시지와 함께 리다이렉트
+            return render_template('admin_settings.html', 
+                                 settings={**settings, 'theme': request.form.get('theme', 'dark')},
+                                 success_msg="위험도 알고리즘 설정이 성공적으로 저장되었습니다.")
+        except Exception as e:
+            # 오류 메시지와 함께 리다이렉트
+            return render_template('admin_settings.html', 
+                                 settings={**settings, 'theme': request.form.get('theme', 'dark')},
+                                 error_msg=f"설정 저장 중 오류가 발생했습니다: {str(e)}")
 
     # 리포트
     @app.route('/admin/reports')
