@@ -217,7 +217,7 @@ def calculate_dashboard_data():
             'contract_workers': int(total_contract_workers),
             'cumulative_workers': cumulative_workers,
             'schedule_rate': schedule_rate,
-            'avg_progress': progress_rate,
+            'avg_progress': progress_rate,  # 진행율 = 투입인원/계약인원 * 100
             'work_count': len(work_types),
             'status': status,
             'status_color': status_color,

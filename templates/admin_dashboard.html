@@ -11,6 +11,12 @@
 
     <!-- 상단 현장 카드 4열 그리드 + 신호등 + 테이블 막대 + 관리메뉴 5열 -->
     <style>
+      /* 관리자 대시보드는 전체 화면 너비 사용 */
+      .container {
+        max-width: none !important;
+        width: 100% !important;
+        padding: 20px 40px !important;
+      }
       /* 상단 현장 그리드 */
       .site-grid{
         display:grid;
@@ -325,13 +331,13 @@
                                 <!-- 1행: 진행률 -->
                                 <div class="pg-label">진행률</div>
                                 <div class="pg-bar">
-                                  <div class="pg-fill progress" data-progress="{{ project.avg_progress or 0 }}"></div>
+                                  <div class="pg-fill progress" data-progress="{{ (project.avg_progress or 0)|round(1) }}"></div>
                                   <span class="pg-val">{{ (project.avg_progress or 0)|round(1) }}%</span>
                                 </div>
                                 <!-- 2행: 공정율 -->
                                 <div class="pg-label">공정율</div>
                                 <div class="pg-bar">
-                                  <div class="pg-fill schedule" data-progress="{{ project.schedule_rate or 0 }}"></div>
+                                  <div class="pg-fill schedule" data-progress="{{ (project.schedule_rate or 0)|round(1) }}"></div>
                                   <span class="pg-val">{{ (project.schedule_rate or 0)|round(1) }}%</span>
                                 </div>
                               </div>
@@ -406,10 +412,16 @@
     </div>
 
     <script>
-        // 막대 게이지 채우기 (정확한 퍼센트 반영)
+        // 막대 게이지 채우기 (정확한 퍼센트 반영) - 디버그 추가
         document.addEventListener('DOMContentLoaded', function() {
           document.querySelectorAll('.progress-fill, .pg-fill').forEach(function(elem) {
             const p = parseFloat(elem.getAttribute('data-progress') || '0');
+            
+            // 디버그: 진행률과 공정율을 구분해서 로그 출력
+            const isProgress = elem.classList.contains('progress');
+            const isSchedule = elem.classList.contains('schedule');
+            const type = isProgress ? '진행률' : (isSchedule ? '공정율' : '기타');
+            console.log(`${type} 게이지: ${p}% (원본: ${elem.getAttribute('data-progress')})`);
             
             // 정확히 0%이면 완전히 숨김
             if (p <= 0) {
@@ -422,6 +434,7 @@
               elem.style.width = clamped + '%';
               elem.style.minWidth = '0px';  // 최소 너비 강제 제거
               elem.style.opacity = '1';
+              console.log(`${type} 게이지 적용: ${clamped}% width`);
             }
           });
         });
