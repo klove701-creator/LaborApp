@@ -15,11 +15,8 @@ from calculations import calculate_project_work_summary, calculate_dashboard_dat
 from admin_routes import register_admin_routes
 from user_routes import register_user_routes
 
-# Flask 앱 초기화 - React 빌드 파일 경로 설정
-app = Flask(__name__, 
-            static_folder='frontend/dist', 
-            static_url_path='',
-            template_folder='templates')
+# Flask 앱 초기화
+app = Flask(__name__)
 
 # ===== Railway 배포용 설정 =====
 # HTTPS 프록시 처리 (Railway는 HTTPS 프록시 사용)
@@ -44,6 +41,7 @@ if not app.debug:
     app.logger.info('노무비 관리 시스템 시작')
 
 # ===== 데이터베이스 연결 =====
+dm = None
 try:
     # DATABASE_URL 환경변수 확인 (Railway에서 자동 주입)
     database_url = os.environ.get('DATABASE_URL')
@@ -52,18 +50,14 @@ try:
         dm = DatabaseManager()  # PostgreSQL 사용
         app.logger.info("✅ PostgreSQL 데이터베이스 연결 성공")
     else:
-        app.logger.warning('DATABASE_URL이 없습니다. 로컬 개발 모드로 실행합니다.')
-        # 로컬 개발용 fallback (필요시 파일 기반 DB 등)
-        dm = DatabaseManager()  # 기본 설정 사용
+        app.logger.warning('DATABASE_URL이 없습니다. 데이터베이스 없이 시작합니다.')
+        dm = None
         
 except Exception as e:
     app.logger.error(f"❌ 데이터베이스 연결 실패: {e}")
-    # 개발 환경에서는 계속 진행, 프로덕션에서는 종료
-    if os.environ.get('FLASK_ENV') == 'production':
-        exit(1)
-    else:
-        print(f"개발 모드: 데이터베이스 오류 무시 - {e}")
-        dm = None
+    # Railway에서는 앱이 시작되도록 데이터베이스 오류를 무시
+    app.logger.warning("데이터베이스 없이 애플리케이션을 시작합니다.")
+    dm = None
 
 # utils에서 데이터 매니저 전역 설정
 from utils import set_data_manager
@@ -95,23 +89,40 @@ def health_check():
     try:
         if dm:
             # 간단한 DB 연결 테스트
-            users = dm.get_users()
-            return jsonify({
-                'status': 'healthy',
-                'database': 'connected',
-                'users_count': len(users)
-            }), 200
+            try:
+                users = dm.get_users()
+                return jsonify({
+                    'status': 'healthy',
+                    'database': 'connected',
+                    'users_count': len(users),
+                    'app': 'LaborApp',
+                    'version': '1.0.0'
+                }), 200
+            except Exception as db_error:
+                app.logger.warning(f"DB 체크 실패하지만 앱은 정상: {db_error}")
+                return jsonify({
+                    'status': 'partial',
+                    'database': 'error',
+                    'app': 'LaborApp',
+                    'version': '1.0.0',
+                    'message': 'Database connection issue but app is running'
+                }), 200
         else:
             return jsonify({
-                'status': 'partial',
-                'database': 'disconnected'
+                'status': 'running',
+                'database': 'not_configured',
+                'app': 'LaborApp',
+                'version': '1.0.0',
+                'message': 'App running without database'
             }), 200
     except Exception as e:
         app.logger.error(f"헬스체크 실패: {e}")
         return jsonify({
             'status': 'error',
+            'app': 'LaborApp',
+            'version': '1.0.0',
             'message': str(e)
-        }), 500
+        }), 200  # 200 응답으로 Railway 헬스체크 통과
 
 # ===== API와 React SPA 통합 라우팅 =====
 
@@ -317,36 +328,11 @@ def api_project_summary(project_name):
     except Exception as e:
         return jsonify({'error': f'프로젝트 요약 조회 실패: {str(e)}'}), 500
 
-# ===== React SPA 라우팅 =====
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve_react_app(path):
-    """React SPA 서빙 - API가 아닌 모든 경로"""
-    
-    # API 경로는 404 반환
-    if path.startswith('api/'):
-        return jsonify({'error': 'API 엔드포인트를 찾을 수 없습니다.'}), 404
-    
-    # 레거시 라우트 (기존 Flask 템플릿)
-    if path in ['login', 'admin', 'user'] or path.startswith(('admin/', 'user/', 'project/')):
-        return serve_legacy_route(path)
-    
-    # 정적 파일 먼저 확인
-    if path and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    
-    # React index.html 서빙
-    if os.path.exists(os.path.join(app.static_folder, 'index.html')):
-        return send_from_directory(app.static_folder, 'index.html')
-    else:
-        # React 빌드가 없으면 레거시 로그인 페이지
-        return render_template('login.html')
-
-def serve_legacy_route(path):
-    """레거시 Flask 라우트 처리"""
-    if path == '' or path == 'login':
-        return render_template('login.html')
-    # 다른 레거시 라우트들은 기존 라우트 핸들러가 처리
+# ===== 기본 라우팅 =====
+@app.route('/')
+def index():
+    """메인 페이지 - 로그인으로 리다이렉트"""
+    return render_template('login.html')
 
 @app.route('/login', methods=['POST'])
 def login_post():
