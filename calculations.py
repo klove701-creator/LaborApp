@@ -289,26 +289,25 @@ def calculate_project_summary(project_name, current_date):
             'cumulative_progress': cumulative_progress,
         })
     
-    # 합계 공정률 계산 (공종별 오늘 공정률의 평균)
-    avg_today_progress = total_today_progress / work_type_count if work_type_count > 0 else 0
+    # 합계 누계 공정률 계산 (공종별 누계 공정률의 평균)
+    avg_cumulative_progress = 0.0
+    if work_type_count > 0:
+        avg_cumulative_progress = sum(item['cumulative_progress'] for item in summary) / work_type_count
     
-    # 합계 행 추가
-    summary.append({
-        'work_type': '합계',
-        'today': total_today_workers,
+    # 합계 정보를 별도로 반환 (중복 방지)
+    totals = {
         'today_day': total_today_day,
         'today_night': total_today_night,
         'today_midnight': total_today_midnight,
-        'cumulative': total_cumulative_workers,
+        'today': total_today_workers,
         'cumulative_day': total_cumulative_day,
         'cumulative_night': total_cumulative_night,
         'cumulative_midnight': total_cumulative_midnight,
-        'today_progress': avg_today_progress,
-        'cumulative_progress': 0,  # 누계 공정률은 합계에서 의미가 없음
-        'is_total': True
-    })
+        'cumulative': total_cumulative_workers,
+        'cumulative_progress': avg_cumulative_progress
+    }
     
-    return summary
+    return summary, totals
 
 
 def calculate_project_work_summary(project_name):
