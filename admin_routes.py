@@ -348,10 +348,10 @@ def register_admin_routes(app, dm):
         settings = {
             'theme': 'dark',
             'risk_thresholds': {
-                'cost_overrun_warn': int(HEALTH_POLICY['COST_OVERRUN_WARN'] * 100),
-                'cost_overrun_danger': int(HEALTH_POLICY['COST_OVERRUN_DANGER'] * 100),
-                'progress_warn_min': int(HEALTH_POLICY['PROGRESS_WARN_MIN'] * 100),
-                'progress_danger_min': int(HEALTH_POLICY['PROGRESS_DANGER_MIN'] * 100),
+                'cost_warn_ratio': int(HEALTH_POLICY['COST_WARN_RATIO'] * 100),
+                'cost_danger_ratio': int(HEALTH_POLICY['COST_DANGER_RATIO'] * 100),
+                'progress_warn_diff': int(HEALTH_POLICY['PROGRESS_WARN_DIFF'] * 100),
+                'progress_danger_diff': int(HEALTH_POLICY['PROGRESS_DANGER_DIFF'] * 100),
                 'workers_warn_drop': int(abs(HEALTH_POLICY['WORKERS_WARN_DROP']) * 100),
                 'workers_danger_drop': int(abs(HEALTH_POLICY['WORKERS_DANGER_DROP']) * 100),
                 'workers_warn_surge': int(HEALTH_POLICY['WORKERS_WARN_SURGE'] * 100),
@@ -372,10 +372,10 @@ def register_admin_routes(app, dm):
         settings = {
             'theme': request.form.get('theme', 'dark'),
             'risk_thresholds': {
-                'cost_overrun_warn': parse_int(request.form.get('cost_overrun_warn', '5'), 5),
-                'cost_overrun_danger': parse_int(request.form.get('cost_overrun_danger', '12'), 12),
-                'progress_warn_min': parse_int(request.form.get('progress_warn_min', '50'), 50),
-                'progress_danger_min': parse_int(request.form.get('progress_danger_min', '20'), 20),
+                'cost_warn_ratio': parse_int(request.form.get('cost_warn_ratio', '80'), 80),
+                'cost_danger_ratio': parse_int(request.form.get('cost_danger_ratio', '100'), 100),
+                'progress_warn_diff': parse_int(request.form.get('progress_warn_diff', '5'), 5),
+                'progress_danger_diff': parse_int(request.form.get('progress_danger_diff', '10'), 10),
                 'workers_warn_drop': parse_int(request.form.get('workers_warn_drop', '40'), 40),
                 'workers_danger_drop': parse_int(request.form.get('workers_danger_drop', '60'), 60),
                 'workers_warn_surge': parse_int(request.form.get('workers_warn_surge', '40'), 40),
@@ -390,10 +390,10 @@ def register_admin_routes(app, dm):
         # utils.py의 HEALTH_POLICY 업데이트
         from utils import HEALTH_POLICY
         HEALTH_POLICY.update({
-            'COST_OVERRUN_WARN': settings['risk_thresholds']['cost_overrun_warn'] / 100.0,
-            'COST_OVERRUN_DANGER': settings['risk_thresholds']['cost_overrun_danger'] / 100.0,
-            'PROGRESS_WARN_MIN': settings['risk_thresholds']['progress_warn_min'] / 100.0,
-            'PROGRESS_DANGER_MIN': settings['risk_thresholds']['progress_danger_min'] / 100.0,
+            'COST_WARN_RATIO': settings['risk_thresholds']['cost_warn_ratio'] / 100.0,
+            'COST_DANGER_RATIO': settings['risk_thresholds']['cost_danger_ratio'] / 100.0,
+            'PROGRESS_WARN_DIFF': settings['risk_thresholds']['progress_warn_diff'] / 100.0,
+            'PROGRESS_DANGER_DIFF': settings['risk_thresholds']['progress_danger_diff'] / 100.0,
             'WORKERS_WARN_DROP': -settings['risk_thresholds']['workers_warn_drop'] / 100.0,
             'WORKERS_DANGER_DROP': -settings['risk_thresholds']['workers_danger_drop'] / 100.0,
             'WORKERS_WARN_SURGE': settings['risk_thresholds']['workers_warn_surge'] / 100.0,

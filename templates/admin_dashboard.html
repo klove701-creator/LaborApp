@@ -157,6 +157,73 @@
         .pg-label{ justify-content:flex-start; margin-bottom:2px; }
         .pg-bar{ height:1.2em; }
       }
+
+      /* 신호등 스타일 */
+      .traffic-lights {
+        padding: 8px;
+        text-align: center;
+      }
+      
+      .lights-container {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      
+      .traffic-light {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+      
+      .light-icon {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 1px solid #555;
+        transition: all 0.3s ease;
+      }
+      
+      .light-label {
+        font-size: 10px;
+        color: #9ca3af;
+        font-weight: 500;
+      }
+      
+      /* 신호등 상태별 색상 */
+      .light-icon.good {
+        background-color: #10b981;
+        box-shadow: 0 0 4px rgba(16, 185, 129, 0.5);
+      }
+      
+      .light-icon.warn {
+        background-color: #f59e0b;
+        box-shadow: 0 0 4px rgba(245, 158, 11, 0.5);
+      }
+      
+      .light-icon.bad {
+        background-color: #ef4444;
+        box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
+      }
+      
+      /* 반응형 */
+      @media (max-width: 768px) {
+        .lights-container {
+          flex-direction: row;
+          gap: 4px;
+        }
+        
+        .light-icon {
+          width: 10px;
+          height: 10px;
+        }
+        
+        .light-label {
+          font-size: 9px;
+        }
+      }
     </style>
 </head>
 <body>
@@ -215,6 +282,7 @@
                             <th>누계출역</th>
                             <th>계약인원</th>
                             <th>진행률 / 공정율</th>
+                            <th>위험도 신호등</th>
                             <th>상태</th>
                             <th>관리</th>
                         </tr>
@@ -244,6 +312,22 @@
                                 </div>
                               </div>
                             </td>
+                           <td class="traffic-lights">
+                              <div class="lights-container">
+                                <div class="traffic-light">
+                                  <div class="light-icon cost-light {{ project.health_meta.flags.cost }}"></div>
+                                  <span class="light-label">비용</span>
+                                </div>
+                                <div class="traffic-light">
+                                  <div class="light-icon schedule-light {{ project.health_meta.flags.schedule }}"></div>
+                                  <span class="light-label">공정</span>
+                                </div>
+                                <div class="traffic-light">
+                                  <div class="light-icon workers-light {{ project.health_meta.flags.workers }}"></div>
+                                  <span class="light-label">인력</span>
+                                </div>
+                              </div>
+                           </td>
                             <td>
                                 <span class="status-badge status-{{ project.status_color }}">
                                     {{ project.status }}

@@ -11,21 +11,24 @@ def set_data_manager(data_manager):
     global dm
     dm = data_manager
 
-# 상태 평가 정책
+# 상태 평가 정책 (신규 로직)
 HEALTH_POLICY = {
-    # 비용 초과 임계값
-    'COST_OVERRUN_WARN': 0.05,    # 5%
-    'COST_OVERRUN_DANGER': 0.12,  # 12%
+    # 비용 위험도: 투입인원/계약인원 비율
+    'COST_WARN_RATIO': 0.80,      # 80% - 경고
+    'COST_DANGER_RATIO': 1.00,    # 100% - 위험
     
-    # 공정율 임계값
-    'PROGRESS_WARN_MIN': 0.50,     # 50%
-    'PROGRESS_DANGER_MIN': 0.20,   # 20%
+    # 공정 위험도: |진행율 - 공정율| 차이
+    'PROGRESS_WARN_DIFF': 0.05,   # 5% - 경고  
+    'PROGRESS_DANGER_DIFF': 0.10, # 10% - 위험
     
-    # 인력 변동 임계값
+    # 인력 변동 임계값 (기존 유지)
     'WORKERS_WARN_DROP': -0.40,    # 40% 감소
     'WORKERS_DANGER_DROP': -0.60,  # 60% 감소
     'WORKERS_WARN_SURGE': 0.40,    # 40% 증가
     'WORKERS_DANGER_SURGE': 0.60,  # 60% 증가
+    
+    # 인력 변동 분석 윈도우
+    'WORKERS_WINDOW_DAYS': 7,     # 7일
 }
 
 def login_required(role=None):

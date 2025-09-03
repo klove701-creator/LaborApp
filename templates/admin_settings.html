@@ -257,50 +257,50 @@
                 <!-- 비용 초과 기준 -->
                 <div class="setting-row">
                     <div>
-                        <div class="setting-label">비용 초과 경고</div>
-                        <div class="setting-description">계약 대비 투입노무비 초과율 경고 기준</div>
+                        <div class="setting-label">비용 경고 비율</div>
+                        <div class="setting-description">투입인원/계약인원 비율이 이 값에 도달하면 경고</div>
                     </div>
                     <div class="setting-control">
-                        <input type="number" name="cost_overrun_warn" 
-                               value="{{ settings.risk_thresholds.cost_overrun_warn }}" 
-                               min="1" max="50" class="setting-input"> %
+                        <input type="number" name="cost_warn_ratio" 
+                               value="{{ settings.risk_thresholds.cost_warn_ratio }}" 
+                               min="50" max="100" class="setting-input"> %
                     </div>
                 </div>
                 
                 <div class="setting-row">
                     <div>
-                        <div class="setting-label">비용 초과 위험</div>
-                        <div class="setting-description">계약 대비 투입노무비 초과율 위험 기준</div>
+                        <div class="setting-label">비용 위험 비율</div>
+                        <div class="setting-description">투입인원/계약인원 비율이 이 값에 도달하면 위험</div>
                     </div>
                     <div class="setting-control">
-                        <input type="number" name="cost_overrun_danger" 
-                               value="{{ settings.risk_thresholds.cost_overrun_danger }}" 
-                               min="1" max="50" class="setting-input"> %
+                        <input type="number" name="cost_danger_ratio" 
+                               value="{{ settings.risk_thresholds.cost_danger_ratio }}" 
+                               min="70" max="150" class="setting-input"> %
                     </div>
                 </div>
                 
                 <!-- 공정률 기준 -->
                 <div class="setting-row">
                     <div>
-                        <div class="setting-label">공정 경고 하한선</div>
-                        <div class="setting-description">평균 공정률이 이 값 미만이면 경고</div>
+                        <div class="setting-label">공정 경고 차이</div>
+                        <div class="setting-description">|진행율 - 공정율| 차이가 이 값 이상이면 경고</div>
                     </div>
                     <div class="setting-control">
-                        <input type="number" name="progress_warn_min" 
-                               value="{{ settings.risk_thresholds.progress_warn_min }}" 
-                               min="10" max="90" class="setting-input"> %
+                        <input type="number" name="progress_warn_diff" 
+                               value="{{ settings.risk_thresholds.progress_warn_diff }}" 
+                               min="1" max="20" class="setting-input"> %
                     </div>
                 </div>
                 
                 <div class="setting-row">
                     <div>
-                        <div class="setting-label">공정 위험 하한선</div>
-                        <div class="setting-description">평균 공정률이 이 값 미만이면 위험</div>
+                        <div class="setting-label">공정 위험 차이</div>
+                        <div class="setting-description">|진행율 - 공정율| 차이가 이 값 이상이면 위험</div>
                     </div>
                     <div class="setting-control">
-                        <input type="number" name="progress_danger_min" 
-                               value="{{ settings.risk_thresholds.progress_danger_min }}" 
-                               min="5" max="50" class="setting-input"> %
+                        <input type="number" name="progress_danger_diff" 
+                               value="{{ settings.risk_thresholds.progress_danger_diff }}" 
+                               min="2" max="30" class="setting-input"> %
                     </div>
                 </div>
                 

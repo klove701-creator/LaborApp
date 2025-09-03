@@ -51,50 +51,66 @@ def _today_vs_recent_workers(project_data):
     return delta_ratio, today_total, recent_avg
 
 def determine_health(project_data, labor_costs):
-    """회사 기준(HEALTH_POLICY)에 따른 상태 산정"""
+    """새로운 위험도 알고리즘에 따른 상태 산정"""
     
     contracts = project_data.get('contracts', {}) or {}
     daily_data = project_data.get('daily_data', {}) or {}
     work_types = project_data.get('work_types', []) or []
 
-    # 비용(계약/투입) 집계
-    total_contract = 0
-    total_labor_cost = 0
+    # 1. 비용 위험도 계산: 투입인원/계약인원 비율
+    total_contract_workers = 0
+    total_invested_workers = 0
+    
     for wt in work_types:
-        total_contract += int(contracts.get(wt, 0) or 0)
-        # 누계 인원
-        cum_total = 0
+        contract_amount = int(contracts.get(wt, 0) or 0)
+        rate = (labor_costs.get(wt, {}) or {}).get('day', 0) or 0
+        
+        # 계약인원
+        if rate > 0:
+            total_contract_workers += contract_amount / rate
+        
+        # 투입인원 (누계)
         for date_data in daily_data.values():
             if wt in date_data:
                 wd = date_data[wt]
-                cum_total += int(wd.get('total', 0) or 0)
-        # 단가(주간 기준 사용)
-        rate = (labor_costs.get(wt, {}) or {}).get('day', 0) or 0
-        total_labor_cost += cum_total * int(rate)
+                total_invested_workers += int(wd.get('total', 0) or 0)
 
-    # 비용 초과율
-    overrun_pct = 0.0
-    if total_contract > 0:
-        overrun_pct = (total_labor_cost - total_contract) / float(total_contract)
-
-    # 공정 평균 (0~100 가정)
-    avg_progress = _avg_progress(project_data)
-
-    # 인력 급변
-    delta_ratio, today_workers, recent_avg_workers = _today_vs_recent_workers(project_data)
-
-    # 개별 플래그 판단
+    cost_ratio = total_invested_workers / total_contract_workers if total_contract_workers > 0 else 0
+    
     cost_flag = 'good'
-    if overrun_pct >= HEALTH_POLICY["COST_OVERRUN_DANGER"]:
+    if cost_ratio >= HEALTH_POLICY["COST_DANGER_RATIO"]:
         cost_flag = 'bad'
-    elif overrun_pct >= HEALTH_POLICY["COST_OVERRUN_WARN"]:
+    elif cost_ratio >= HEALTH_POLICY["COST_WARN_RATIO"]:
         cost_flag = 'warn'
 
+    # 2. 공정 위험도 계산: |진행율 - 공정율| 차이
+    progress_rate = (total_invested_workers / total_contract_workers * 100) if total_contract_workers > 0 else 0
+    
+    # 최신 공정율 (사용자가 입력한 값)
+    schedule_rate = 0.0
+    schedule_count = 0
+    if daily_data:
+        latest_date = max(daily_data.keys())
+        latest_data = daily_data[latest_date]
+        for wt in work_types:
+            if wt in latest_data:
+                schedule_val = latest_data[wt].get('progress', 0)
+                schedule_rate += schedule_val
+                schedule_count += 1
+    
+    if schedule_count > 0:
+        schedule_rate = schedule_rate / schedule_count
+    
+    progress_diff = abs(progress_rate - schedule_rate) / 100.0  # 퍼센트를 소수로 변환
+    
     sched_flag = 'good'
-    if avg_progress < (HEALTH_POLICY["PROGRESS_DANGER_MIN"] * 100.0):
+    if progress_diff >= HEALTH_POLICY["PROGRESS_DANGER_DIFF"]:
         sched_flag = 'bad'
-    elif avg_progress < (HEALTH_POLICY["PROGRESS_WARN_MIN"] * 100.0):
+    elif progress_diff >= HEALTH_POLICY["PROGRESS_WARN_DIFF"]:
         sched_flag = 'warn'
+
+    # 3. 인력 급변 (기존 로직 유지)
+    delta_ratio, today_workers, recent_avg_workers = _today_vs_recent_workers(project_data)
 
     workers_flag = 'good'
     if delta_ratio <= HEALTH_POLICY["WORKERS_DANGER_DROP"] or delta_ratio >= HEALTH_POLICY["WORKERS_DANGER_SURGE"]:
@@ -102,17 +118,22 @@ def determine_health(project_data, labor_costs):
     elif delta_ratio <= HEALTH_POLICY["WORKERS_WARN_DROP"] or delta_ratio >= HEALTH_POLICY["WORKERS_WARN_SURGE"]:
         workers_flag = 'warn'
 
-    # 종합 결정
-    if 'bad' in (cost_flag, sched_flag, workers_flag):
+    # 4. 종합 상태 결정 (3개 신호등의 평균)
+    flag_scores = {'good': 0, 'warn': 1, 'bad': 2}
+    avg_score = (flag_scores[cost_flag] + flag_scores[sched_flag] + flag_scores[workers_flag]) / 3
+    
+    if avg_score >= 1.5:
         status, color = '위험', 'danger'
-    elif 'warn' in (cost_flag, sched_flag, workers_flag):
-        status, color = '경고', 'warning'
+    elif avg_score >= 0.5:
+        status, color = '경고', 'warning' 
     else:
         status, color = '양호', 'success'
 
     return status, color, {
-        'avg_progress': round(avg_progress, 1),
-        'overrun_pct': overrun_pct,
+        'cost_ratio': round(cost_ratio, 2),
+        'progress_rate': round(progress_rate, 1),
+        'schedule_rate': round(schedule_rate, 1),
+        'progress_diff': round(progress_diff * 100, 1),
         'today_workers': int(today_workers),
         'recent_avg_workers': float(recent_avg_workers),
         'flags': {
