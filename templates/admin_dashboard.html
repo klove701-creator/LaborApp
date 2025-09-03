@@ -66,7 +66,7 @@
 
       /* 테이블 내부 2단 막대 최소 스타일 */
       .progress-bar{ position:relative; background:#0e1424; border:1px solid #263147; border-radius:999px; height:14px; overflow:hidden; }
-      .progress-fill{ height:100%; width:0%; transition: width .6s ease; }
+      .progress-fill{ height:100%; width:0%; transition: width .6s ease; min-width:0 !important; }
       .progress-text{ display:inline-block; margin-left:8px; font-size:12px; color:#cbd5e1; }
 
       /* 관리메뉴 5열 그리드 - 전체 너비 사용하도록 수정 */
@@ -74,9 +74,10 @@
         width: 100%;
       }
       .admin-menu {
-        display: flex;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 16px;
         width: 100%;
-        gap: 1%;
         margin-top: 16px;
       }
       @media (max-width: 1400px) { .admin-menu { grid-template-columns: repeat(3, 1fr); } }
@@ -113,7 +114,7 @@
 
       /* 막대(이미 있으면 중복돼도 무방) */
       .progress-bar{ position:relative; background:#0e1424; border:1px solid #263147; border-radius:999px; height:14px; overflow:hidden; }
-      .progress-fill{ height:100%; width:0%; transition: width .6s ease; }
+      .progress-fill{ height:100%; width:0%; transition: width .6s ease; min-width:0 !important; }
       .progress-fill.progress{ background:#3b82f6; }   /* 파란: 진행률 */
       .progress-fill.schedule{ background:#ef4444; }   /* 빨간: 공정율 */
 
@@ -144,7 +145,7 @@
         height:1.2em; background:#0e1424; border:1px solid #263147;
         border-radius:999px; overflow:hidden; position:relative;
       }
-      .pg-fill{ height:100%; width:0%; transition:width .6s ease; }
+      .pg-fill{ height:100%; width:0%; transition:width .6s ease; min-width:0 !important; }
       .pg-fill.progress{ background:#3b82f6; }  /* 진행률(파란) */
       .pg-fill.schedule{ background:#ef4444; }  /* 공정율(빨간) */
       .pg-val{
@@ -224,6 +225,28 @@
           font-size: 9px;
         }
       }
+
+      /* 설치 버튼 스타일 */
+      .install-btn {
+        background: #059669;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-right: 10px;
+        transition: background-color 0.2s ease;
+      }
+      
+      .install-btn:hover {
+        background: #047857;
+      }
+      
+      .install-btn:active {
+        background: #065f46;
+      }
     </style>
 </head>
 <body>
@@ -232,6 +255,7 @@
             <h1>관리자 대시보드</h1>
             <div class="header-info">
                 <span class="admin-badge">관리자</span>
+                <button id="installBtn" class="install-btn" style="display: none;">설치</button>
                 <a href="{{ url_for('logout') }}" class="logout-btn">로그아웃</a>
             </div>
         </div>
@@ -382,7 +406,7 @@
     </div>
 
     <script>
-        // 막대 게이지 채우기 (0% 진행률은 완전히 숨김)
+        // 막대 게이지 채우기 (정확한 퍼센트 반영)
         document.addEventListener('DOMContentLoaded', function() {
           document.querySelectorAll('.progress-fill, .pg-fill').forEach(function(elem) {
             const p = parseFloat(elem.getAttribute('data-progress') || '0');
@@ -390,12 +414,13 @@
             // 정확히 0%이면 완전히 숨김
             if (p <= 0) {
               elem.style.width = '0%';
-              elem.style.minWidth = '0px';  // 최소 너비 제거
-              elem.style.opacity = '0';     // 완전 투명
+              elem.style.minWidth = '0px';
+              elem.style.opacity = '0';
             } else {
-              const clamped = Math.min(100, p);
+              // 정확한 퍼센트 반영 (최소값 제거)
+              const clamped = Math.min(100, Math.max(0, p));
               elem.style.width = clamped + '%';
-              elem.style.minWidth = 'auto';
+              elem.style.minWidth = '0px';  // 최소 너비 강제 제거
               elem.style.opacity = '1';
             }
           });
@@ -406,6 +431,47 @@
             const url = '/admin/projects/edit/' + encodeURIComponent(projectName);
             window.location.href = url;
         }
+
+        // PWA 설치 기능
+        let deferredPrompt;
+        const installBtn = document.getElementById('installBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // 기본 브라우저 설치 프롬프트를 막음
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // 설치 버튼 표시
+            installBtn.style.display = 'inline-block';
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) {
+                return;
+            }
+
+            // 설치 프롬프트 표시
+            deferredPrompt.prompt();
+            
+            // 사용자의 응답 기다림
+            const { outcome } = await deferredPrompt.userChoice;
+            
+            if (outcome === 'accepted') {
+                console.log('사용자가 앱 설치를 승인했습니다');
+            } else {
+                console.log('사용자가 앱 설치를 거부했습니다');
+            }
+            
+            // deferredPrompt를 한 번만 사용할 수 있음
+            deferredPrompt = null;
+            installBtn.style.display = 'none';
+        });
+
+        // 앱이 이미 설치된 경우 버튼 숨김
+        window.addEventListener('appinstalled', () => {
+            installBtn.style.display = 'none';
+            deferredPrompt = null;
+        });
     </script>
     <script src="{{ url_for('static', filename='js/currency-format.js') }}"></script>
 </body>
