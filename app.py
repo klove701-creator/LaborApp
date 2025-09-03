@@ -11,12 +11,15 @@ load_dotenv()  # 로컬 개발시에만 .env 파일 로드
 
 # PostgreSQL 데이터베이스 매니저 사용
 from database import DatabaseManager
-from calculations import calculate_project_work_summary
+from calculations import calculate_project_work_summary, calculate_dashboard_data, calculate_project_summary, determine_health
 from admin_routes import register_admin_routes
 from user_routes import register_user_routes
 
-# Flask 앱 초기화
-app = Flask(__name__)
+# Flask 앱 초기화 - React 빌드 파일 경로 설정
+app = Flask(__name__, 
+            static_folder='frontend/dist', 
+            static_url_path='',
+            template_folder='templates')
 
 # ===== Railway 배포용 설정 =====
 # HTTPS 프록시 처리 (Railway는 HTTPS 프록시 사용)
@@ -110,10 +113,245 @@ def health_check():
             'message': str(e)
         }), 500
 
-# ===== 기본 인증 라우트 =====
-@app.route('/')
-def login():
-    return render_template('login.html')
+# ===== API와 React SPA 통합 라우팅 =====
+
+# API 라우트들
+from api_app import app as api_app
+from flask import send_from_directory
+import os
+
+# API 라우트 복사 (JWT 인증)
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from datetime import timedelta
+
+# CORS 설정
+CORS(app, origins=["*"])  # Railway에서는 모든 오리진 허용
+
+# JWT 설정
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'change_me_in_production')
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
+jwt = JWTManager(app)
+
+# JWT 에러 핸들러들
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    return jsonify({'error': '토큰이 만료되었습니다. 다시 로그인해주세요.'}), 401
+
+@jwt.invalid_token_loader
+def invalid_token_callback(error):
+    return jsonify({'error': '유효하지 않은 토큰입니다.'}), 401
+
+@jwt.unauthorized_loader
+def missing_token_callback(error):
+    return jsonify({'error': '인증 토큰이 필요합니다.'}), 401
+
+# ===== API 라우트들 =====
+@app.route('/api/auth/login', methods=['POST'])
+def api_login():
+    """API 로그인"""
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+
+        if not username or not password:
+            return jsonify({'error': '사용자명과 비밀번호를 입력해주세요.'}), 400
+
+        if not dm:
+            return jsonify({'error': '데이터베이스 연결 오류'}), 500
+
+        users = dm.get_users()
+        user = users.get(username)
+        
+        if not user or user['password'] != password:
+            return jsonify({'error': '아이디 또는 비밀번호가 틀렸습니다.'}), 401
+
+        if user.get('status') == 'inactive':
+            return jsonify({'error': '계정이 비활성화되었습니다.'}), 401
+
+        # JWT 토큰 생성
+        access_token = create_access_token(
+            identity=username,
+            additional_claims={'role': user['role']}
+        )
+
+        return jsonify({
+            'access_token': access_token,
+            'user': {
+                'username': username,
+                'role': user['role'],
+                'projects': user.get('projects', [])
+            }
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f'API 로그인 오류: {e}')
+        return jsonify({'error': f'로그인 처리 중 오류: {str(e)}'}), 500
+
+@app.route('/api/auth/me', methods=['GET'])
+@jwt_required()
+def api_current_user():
+    """현재 사용자 정보 조회"""
+    try:
+        username = get_jwt_identity()
+        if not dm:
+            return jsonify({'error': '데이터베이스 연결 오류'}), 500
+            
+        users = dm.get_users()
+        user = users.get(username)
+        
+        if not user:
+            return jsonify({'error': '사용자를 찾을 수 없습니다.'}), 404
+
+        return jsonify({
+            'username': username,
+            'role': user['role'],
+            'projects': user.get('projects', []),
+            'status': user.get('status', 'active')
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': f'사용자 정보 조회 실패: {str(e)}'}), 500
+
+@app.route('/api/projects', methods=['GET'])
+@jwt_required()
+def api_get_projects():
+    """프로젝트 목록 조회"""
+    try:
+        username = get_jwt_identity()
+        if not dm:
+            return jsonify({'error': '데이터베이스 연결 오류'}), 500
+            
+        users = dm.get_users()
+        user = users.get(username)
+        
+        if not user:
+            return jsonify({'error': '사용자를 찾을 수 없습니다.'}), 404
+
+        projects_data = dm.get_projects()
+        
+        # 관리자는 모든 프로젝트, 사용자는 할당된 프로젝트만
+        if user['role'] == 'admin':
+            return jsonify({'projects': projects_data}), 200
+        else:
+            user_projects = user.get('projects', [])
+            filtered_projects = {
+                name: data for name, data in projects_data.items()
+                if name in user_projects
+            }
+            return jsonify({'projects': filtered_projects}), 200
+
+    except Exception as e:
+        return jsonify({'error': f'프로젝트 조회 실패: {str(e)}'}), 500
+
+@app.route('/api/admin/dashboard', methods=['GET'])
+@jwt_required()
+def api_admin_dashboard():
+    """관리자 대시보드 데이터"""
+    try:
+        username = get_jwt_identity()
+        if not dm:
+            return jsonify({'error': '데이터베이스 연결 오류'}), 500
+            
+        users = dm.get_users()
+        user = users.get(username)
+        
+        if user['role'] != 'admin':
+            return jsonify({'error': '관리자 권한이 필요합니다.'}), 403
+
+        dashboard_data = calculate_dashboard_data()
+        return jsonify({'dashboard': dashboard_data}), 200
+
+    except Exception as e:
+        return jsonify({'error': f'대시보드 데이터 조회 실패: {str(e)}'}), 500
+
+@app.route('/api/labor-costs', methods=['GET'])
+@jwt_required()
+def api_get_labor_costs():
+    """노무단가 목록 조회"""
+    try:
+        if not dm:
+            return jsonify({'error': '데이터베이스 연결 오류'}), 500
+            
+        labor_costs = dm.get_labor_costs()
+        return jsonify({'labor_costs': labor_costs}), 200
+
+    except Exception as e:
+        return jsonify({'error': f'노무단가 조회 실패: {str(e)}'}), 500
+
+@app.route('/api/projects/<project_name>/summary', methods=['GET'])
+@jwt_required()
+def api_project_summary(project_name):
+    """프로젝트 요약 정보"""
+    try:
+        username = get_jwt_identity()
+        if not dm:
+            return jsonify({'error': '데이터베이스 연결 오류'}), 500
+            
+        users = dm.get_users()
+        user = users.get(username)
+        
+        # 권한 확인
+        if user['role'] != 'admin' and project_name not in user.get('projects', []):
+            return jsonify({'error': '프로젝트 접근 권한이 없습니다.'}), 403
+
+        current_date = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
+        
+        projects_data = dm.get_projects()
+        project_data = projects_data.get(project_name)
+        labor_costs = dm.get_labor_costs()
+        
+        if not project_data:
+            return jsonify({'error': '프로젝트를 찾을 수 없습니다.'}), 404
+
+        # 계산된 요약 정보
+        summary, totals = calculate_project_summary(project_name, current_date)
+        status, status_color, health_meta = determine_health(project_data, labor_costs)
+
+        return jsonify({
+            'summary': summary,
+            'totals': totals,
+            'health': {
+                'status': status,
+                'color': status_color,
+                'meta': health_meta
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': f'프로젝트 요약 조회 실패: {str(e)}'}), 500
+
+# ===== React SPA 라우팅 =====
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_react_app(path):
+    """React SPA 서빙 - API가 아닌 모든 경로"""
+    
+    # API 경로는 404 반환
+    if path.startswith('api/'):
+        return jsonify({'error': 'API 엔드포인트를 찾을 수 없습니다.'}), 404
+    
+    # 레거시 라우트 (기존 Flask 템플릿)
+    if path in ['login', 'admin', 'user'] or path.startswith(('admin/', 'user/', 'project/')):
+        return serve_legacy_route(path)
+    
+    # 정적 파일 먼저 확인
+    if path and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    
+    # React index.html 서빙
+    if os.path.exists(os.path.join(app.static_folder, 'index.html')):
+        return send_from_directory(app.static_folder, 'index.html')
+    else:
+        # React 빌드가 없으면 레거시 로그인 페이지
+        return render_template('login.html')
+
+def serve_legacy_route(path):
+    """레거시 Flask 라우트 처리"""
+    if path == '' or path == 'login':
+        return render_template('login.html')
+    # 다른 레거시 라우트들은 기존 라우트 핸들러가 처리
 
 @app.route('/login', methods=['POST'])
 def login_post():
