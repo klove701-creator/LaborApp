@@ -56,28 +56,16 @@ class DatabaseManager:
                     raise ConnectionError(f"데이터베이스 연결 최종 실패: {e}")
     
     def get_connection(self):
-        """안전한 연결 확인 및 반환"""
-        max_attempts = 3
-        for attempt in range(max_attempts):
-            try:
-                # 연결 상태 확인
-                if self.conn is None or self.conn.closed != 0:
-                    self.connect()
-                
-                # 연결 테스트
-                with self.conn.cursor() as test_cur:
-                    test_cur.execute("SELECT 1")
-                    test_cur.fetchone()
-                
-                return self.conn
-                
-            except (OperationalError, DatabaseError) as e:
-                print(f"연결 확인 실패 (시도 {attempt + 1}): {e}")
-                if attempt < max_attempts - 1:
-                    time.sleep(0.5)
-                    self.conn = None
-                else:
-                    raise
+        """안전한 연결 확인 및 반환 (최적화)"""
+        try:
+            # 연결 상태만 빠르게 확인 (테스트 쿼리 제거)
+            if self.conn is None or self.conn.closed != 0:
+                self.connect()
+            return self.conn
+        except (OperationalError, DatabaseError):
+            # 한 번만 재연결 시도
+            self.connect()
+            return self.conn
     
     def execute_query(self, query, params=None, fetch=False):
         """안전한 쿼리 실행"""
@@ -213,14 +201,16 @@ class DatabaseManager:
             return {}
     
     def _get_project_daily_data(self, project_name):
-        """프로젝트의 일일 데이터 조회"""
+        """프로젝트의 일일 데이터 조회 (인덱스 최적화)"""
         try:
+            # 최신 30일만 조회하여 성능 개선
             rows = self.execute_query("""
                 SELECT work_date, work_type, day_workers, night_workers, 
                        midnight_workers, total_workers, progress
                 FROM public.daily_data 
-                WHERE project_name = %s
-                ORDER BY work_date, work_type
+                WHERE project_name = %s 
+                  AND work_date >= CURRENT_DATE - INTERVAL '30 days'
+                ORDER BY work_date DESC, work_type
             """, (project_name,), fetch='all')
             
             daily_data = {}

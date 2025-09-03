@@ -42,6 +42,7 @@
                 <input type="number" name="{{ work_type }}_day"
                        value="{% if today_data.get(work_type, {}).get('day', 0) != 0 %}{{ today_data.get(work_type, {}).get('day', 0) }}{% endif %}"
                        min="0" class="worker-input" placeholder="0"
+                       oninput="debounceUpdate('{{ work_type }}')"
                        onchange="updateSummary('{{ work_type }}')">
               </div>
               <div class="time-group">
@@ -49,6 +50,7 @@
                 <input type="number" name="{{ work_type }}_night"
                        value="{% if today_data.get(work_type, {}).get('night', 0) != 0 %}{{ today_data.get(work_type, {}).get('night', 0) }}{% endif %}"
                        min="0" class="worker-input" placeholder="0"
+                       oninput="debounceUpdate('{{ work_type }}')"
                        onchange="updateSummary('{{ work_type }}')">
               </div>
               <div class="time-group">
@@ -56,6 +58,7 @@
                 <input type="number" name="{{ work_type }}_midnight"
                        value="{% if today_data.get(work_type, {}).get('midnight', 0) != 0 %}{{ today_data.get(work_type, {}).get('midnight', 0) }}{% endif %}"
                        min="0" class="worker-input" placeholder="0"
+                       oninput="debounceUpdate('{{ work_type }}')"
                        onchange="updateSummary('{{ work_type }}')">
               </div>
             </div>
@@ -440,20 +443,49 @@
       button.textContent = allExpanded ? '전체 접기' : '전체 펼치기';
     }
 
+    // DOM 캐싱을 위한 전역 객체
+    const inputCache = {};
+    
+    // 디바운싱을 위한 타이머 객체
+    const updateTimers = {};
+    
     function updateSummary(workType) {
-      const dayInput = document.querySelector(`input[name="${workType}_day"]`);
-      const nightInput = document.querySelector(`input[name="${workType}_night"]`);
-      const midnightInput = document.querySelector(`input[name="${workType}_midnight"]`);
-      const progressInput = document.querySelector(`input[name="${workType}_progress"]`);
-
+      // DOM 요소들을 한 번만 캐시
+      if (!inputCache[workType]) {
+        inputCache[workType] = {
+          dayInput: document.querySelector(`input[name="${workType}_day"]`),
+          nightInput: document.querySelector(`input[name="${workType}_night"]`),
+          midnightInput: document.querySelector(`input[name="${workType}_midnight"]`),
+          progressInput: document.querySelector(`input[name="${workType}_progress"]`)
+        };
+      }
+      
+      const {dayInput, nightInput, midnightInput, progressInput} = inputCache[workType];
       const day = parseInt(dayInput.value) || 0;
       const night = parseInt(nightInput.value) || 0;
       const midnight = parseInt(midnightInput.value) || 0;
       const total = day + night + midnight;
       const progress = parseFloat(progressInput.value) || 0;
 
-      document.getElementById(`today-${workType}`).textContent = `${total}명`;
-      document.getElementById(`progress-${workType}`).textContent = `${progress}%`;
+      // summary DOM 요소도 캐싱
+      if (!inputCache[workType].todayElement) {
+        inputCache[workType].todayElement = document.getElementById(`today-${workType}`);
+        inputCache[workType].progressElement = document.getElementById(`progress-${workType}`);
+      }
+      
+      inputCache[workType].todayElement.textContent = `${total}명`;
+      inputCache[workType].progressElement.textContent = `${progress}%`;
+    }
+
+    // 디바운싱된 업데이트 함수 (200ms 지연)
+    function debounceUpdate(workType) {
+      if (updateTimers[workType]) {
+        clearTimeout(updateTimers[workType]);
+      }
+      
+      updateTimers[workType] = setTimeout(() => {
+        updateSummary(workType);
+      }, 200);
     }
 
     // 공종 추가 모달 관련 함수들
