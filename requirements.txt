@@ -1,5 +1,7 @@
 Werkzeug
 flask
+flask-cors
+flask-jwt-extended
 gunicorn
 psycopg2-binary
 python-dotenv
