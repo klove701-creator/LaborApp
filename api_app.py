@@ -135,7 +135,8 @@ def get_projects():
                 'health': status
             })
 
-        return jsonify({'projects': project_list}), 200
+        # 프로젝트 목록은 리스트 형태로 반환
+        return jsonify(project_list), 200
 
     except Exception as e:
         return jsonify({'error': f'프로젝트 조회 실패: {str(e)}'}), 500
@@ -163,7 +164,8 @@ def get_project_detail(project_id):
         project_detail['id'] = project_id
         project_detail['name'] = project_id
 
-        return jsonify({'project': project_detail}), 200
+        # 프로젝트 상세 정보는 직접 반환
+        return jsonify(project_detail), 200
 
     except Exception as e:
         return jsonify({'error': f'프로젝트 상세 조회 실패: {str(e)}'}), 500
@@ -203,16 +205,14 @@ def get_project_summary(project_id):
         status, _, _ = determine_health(project_data, labor_costs)
 
         return jsonify({
-            'avg_progress': round(avg_progress, 1),
-            'workers': {
+            'progress_avg': round(avg_progress, 1),
+            'today_vs_recent': {
+                'delta_ratio': round(delta_ratio, 2),
                 'today_total': today_total,
                 'recent_avg': round(recent_avg, 1),
-                'delta_ratio': round(delta_ratio, 2),
             },
-            'costs': {
-                'contract_amount': total_contract,
-                'actual_labor_cost': total_labor,
-            },
+            'total_contract': total_contract,
+            'total_labor_cost': total_labor,
             'health': status,
         }), 200
 
@@ -243,7 +243,7 @@ def create_daily_report():
             return jsonify({'error': '프로젝트 접근 권한이 없습니다.'}), 403
 
         dm.save_daily_data(project_id, work_date, work_type, workers, 0, 0, progress)
-        return jsonify({'message': '작업일지가 저장되었습니다.'}), 201
+        return jsonify({'success': True, 'message': '작업일지가 저장되었습니다.'}), 201
 
     except Exception as e:
         return jsonify({'error': f'작업일지 저장 실패: {str(e)}'}), 500
