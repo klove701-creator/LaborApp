@@ -108,12 +108,17 @@ def health_check():
                     'message': 'Database connection issue but app is running'
                 }), 200
         else:
+            # 정적 파일 확인
+            static_files_exist = os.path.exists(os.path.join(app.static_folder or 'static', 'style.css'))
+            
             return jsonify({
                 'status': 'running',
                 'database': 'not_configured',
                 'app': 'LaborApp',
                 'version': '1.0.0',
-                'message': 'App running without database'
+                'message': 'App running without database',
+                'static_files': 'found' if static_files_exist else 'missing',
+                'static_folder': app.static_folder or 'static'
             }), 200
     except Exception as e:
         app.logger.error(f"헬스체크 실패: {e}")
@@ -327,6 +332,12 @@ def api_project_summary(project_name):
 
     except Exception as e:
         return jsonify({'error': f'프로젝트 요약 조회 실패: {str(e)}'}), 500
+
+# ===== 정적 파일 라우팅 =====
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    """정적 파일 서빙"""
+    return send_from_directory(app.static_folder, filename)
 
 # ===== 기본 라우팅 =====
 @app.route('/')
