@@ -6,7 +6,14 @@ from datetime import datetime, timedelta
 import os
 
 from database import DatabaseManager
-from calculations import calculate_dashboard_data, calculate_project_summary, determine_health
+from calculations import (
+    calculate_dashboard_data,
+    calculate_project_summary,
+    calculate_project_work_summary,
+    determine_health,
+    _avg_progress,
+    _today_vs_recent_workers,
+)
 from utils import parse_int, parse_float
 from auth import AuthManager
 from api_routes import register_additional_routes
@@ -96,98 +103,154 @@ def get_current_user():
 @app.route('/api/projects', methods=['GET'])
 @jwt_required()
 def get_projects():
-    """프로젝트 목록 조회 (역할별 필터링)"""
+    """프로젝트 목록 조회"""
     try:
         username = get_jwt_identity()
         users = dm.get_users()
         user = users.get(username)
-        
+
         if not user:
             return jsonify({'error': '사용자를 찾을 수 없습니다.'}), 404
 
         projects_data = dm.get_projects()
-        
-        # 관리자는 모든 프로젝트, 사용자는 할당된 프로젝트만
+        labor_costs = dm.get_labor_costs()
+
+        # 접근 가능한 프로젝트 선별
         if user['role'] == 'admin':
-            return jsonify({'projects': projects_data}), 200
+            project_items = projects_data.items()
         else:
-            user_projects = user.get('projects', [])
-            filtered_projects = {
-                name: data for name, data in projects_data.items()
-                if name in user_projects
-            }
-            return jsonify({'projects': filtered_projects}), 200
+            allowed = set(user.get('projects', []))
+            project_items = [
+                (name, data) for name, data in projects_data.items() if name in allowed
+            ]
+
+        project_list = []
+        for name, data in project_items:
+            avg_progress = _avg_progress(data)
+            status, _, _ = determine_health(data, labor_costs)
+            project_list.append({
+                'id': name,
+                'name': name,
+                'progress': round(avg_progress, 1),
+                'health': status
+            })
+
+        return jsonify({'projects': project_list}), 200
 
     except Exception as e:
         return jsonify({'error': f'프로젝트 조회 실패: {str(e)}'}), 500
 
-@app.route('/api/projects/<project_name>', methods=['GET'])
+@app.route('/api/projects/<project_id>', methods=['GET'])
 @jwt_required()
-def get_project_detail(project_name):
+def get_project_detail(project_id):
     """프로젝트 상세 정보 조회"""
     try:
         username = get_jwt_identity()
         users = dm.get_users()
         user = users.get(username)
-        
+
         # 권한 확인
-        if user['role'] != 'admin' and project_name not in user.get('projects', []):
+        if user['role'] != 'admin' and project_id not in user.get('projects', []):
             return jsonify({'error': '프로젝트 접근 권한이 없습니다.'}), 403
 
         projects_data = dm.get_projects()
-        project_data = projects_data.get(project_name)
-        
+        project_data = projects_data.get(project_id)
+
         if not project_data:
             return jsonify({'error': '프로젝트를 찾을 수 없습니다.'}), 404
 
-        return jsonify({'project': project_data}), 200
+        project_detail = dict(project_data)
+        project_detail['id'] = project_id
+        project_detail['name'] = project_id
+
+        return jsonify({'project': project_detail}), 200
 
     except Exception as e:
         return jsonify({'error': f'프로젝트 상세 조회 실패: {str(e)}'}), 500
 
-@app.route('/api/projects/<project_name>/summary', methods=['GET'])
+@app.route('/api/projects/<project_id>/summary', methods=['GET'])
 @jwt_required()
-def get_project_summary(project_name):
-    """프로젝트 요약 정보 (진행률, 리스크 등)"""
+def get_project_summary(project_id):
+    """프로젝트 요약 (평균 진행률, 인원 변동, 비용, 상태)"""
     try:
         username = get_jwt_identity()
         users = dm.get_users()
         user = users.get(username)
-        
+
         # 권한 확인
-        if user['role'] != 'admin' and project_name not in user.get('projects', []):
+        if user['role'] != 'admin' and project_id not in user.get('projects', []):
             return jsonify({'error': '프로젝트 접근 권한이 없습니다.'}), 403
 
-        current_date = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
-        
         projects_data = dm.get_projects()
-        project_data = projects_data.get(project_name)
+        project_data = projects_data.get(project_id)
         labor_costs = dm.get_labor_costs()
-        
+
         if not project_data:
             return jsonify({'error': '프로젝트를 찾을 수 없습니다.'}), 404
 
-        # 계산된 요약 정보
-        summary, totals = calculate_project_summary(project_name, current_date)
-        status, status_color, health_meta = determine_health(project_data, labor_costs)
+        # 평균 진행률
+        avg_progress = _avg_progress(project_data)
+
+        # 오늘 vs 최근 인원 비교
+        delta_ratio, today_total, recent_avg = _today_vs_recent_workers(project_data)
+
+        # 계약금액 vs 실제 노무비
+        work_summary = calculate_project_work_summary(project_id)
+        total_contract = sum(item['contract_amount'] for item in work_summary)
+        total_labor = sum(item['total_labor_cost'] for item in work_summary)
+
+        # 건강 상태
+        status, _, _ = determine_health(project_data, labor_costs)
 
         return jsonify({
-            'summary': summary,
-            'totals': totals,
-            'health': {
-                'status': status,
-                'color': status_color,
-                'meta': health_meta
-            }
+            'avg_progress': round(avg_progress, 1),
+            'workers': {
+                'today_total': today_total,
+                'recent_avg': round(recent_avg, 1),
+                'delta_ratio': round(delta_ratio, 2),
+            },
+            'costs': {
+                'contract_amount': total_contract,
+                'actual_labor_cost': total_labor,
+            },
+            'health': status,
         }), 200
 
     except Exception as e:
         return jsonify({'error': f'프로젝트 요약 조회 실패: {str(e)}'}), 500
 
 # ===== 일일 데이터 API =====
-@app.route('/api/projects/<project_name>/daily-data', methods=['POST'])
+@app.route('/api/daily-report', methods=['POST'])
 @jwt_required()
-def save_daily_data(project_name):
+def create_daily_report():
+    """작업일지 등록"""
+    try:
+        data = request.get_json()
+        project_id = data.get('project_id')
+        work_date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
+        work_type = data.get('work_type')
+        workers = parse_int(data.get('workers', 0), 0)
+        progress = parse_float(data.get('progress', 0), 0.0)
+
+        if not project_id or not work_type:
+            return jsonify({'error': 'project_id와 work_type은 필수입니다.'}), 400
+
+        username = get_jwt_identity()
+        users = dm.get_users()
+        user = users.get(username)
+
+        if user['role'] != 'admin' and project_id not in user.get('projects', []):
+            return jsonify({'error': '프로젝트 접근 권한이 없습니다.'}), 403
+
+        dm.save_daily_data(project_id, work_date, work_type, workers, 0, 0, progress)
+        return jsonify({'message': '작업일지가 저장되었습니다.'}), 201
+
+    except Exception as e:
+        return jsonify({'error': f'작업일지 저장 실패: {str(e)}'}), 500
+
+@app.route('/api/projects/<project_id>/daily-data', methods=['POST'])
+@jwt_required()
+def save_daily_data(project_id):
     """일일 작업 데이터 저장"""
     try:
         username = get_jwt_identity()
@@ -195,7 +258,7 @@ def save_daily_data(project_name):
         user = users.get(username)
         
         # 권한 확인
-        if user['role'] != 'admin' and project_name not in user.get('projects', []):
+        if user['role'] != 'admin' and project_id not in user.get('projects', []):
             return jsonify({'error': '프로젝트 접근 권한이 없습니다.'}), 403
 
         data = request.get_json()
@@ -203,7 +266,7 @@ def save_daily_data(project_name):
         work_data = data.get('work_data', {})
 
         projects_data = dm.get_projects()
-        if project_name not in projects_data:
+        if project_id not in projects_data:
             return jsonify({'error': '프로젝트를 찾을 수 없습니다.'}), 404
 
         # 각 공종별 데이터 저장
@@ -215,7 +278,7 @@ def save_daily_data(project_name):
             progress = parse_float(values.get('progress', 0), 0.0)
 
             dm.save_daily_data(
-                project_name, work_date, work_type,
+                project_id, work_date, work_type,
                 day_workers, night_workers, midnight_workers, progress
             )
             saved_count += 1
