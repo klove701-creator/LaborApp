@@ -18,7 +18,7 @@ SECRET_KEY=flask-secret-key
 PORT=5000
 
 # 프런트엔드 (.env)
-VITE_API_URL=https://your-railway-domain.railway.app
+VITE_API_URL=https://kiyenolabor.up.railway.app
 ```
 
 ### 2. 필수 파일 확인
