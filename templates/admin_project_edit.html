@@ -88,7 +88,7 @@
                                                min="0" step="1000" placeholder="0" class="contract-input"
                                                onchange="updateRowCalculation('{{ work_type }}')">
                                     </td>
-                                    <td class="contract-workers-cell" id="contract_workers_{{ work_type }}">{{ "%.1f"|format(contract_workers) }}</td>
+                                    <td class="contract-workers-cell" id="contract_workers_{{ work_type }}">{{ contract_workers|int }}</td>
                                     <td class="workers-cell" id="workers_{{ work_type }}">{{ total_workers }}</td>
                                     <td class="rate-cell" id="rate_{{ work_type }}">{{ labor_rate }}</td>
 <td class="labor-cost-cell" id="labor_cost_{{ work_type }}">{{ total_labor_cost }}</td>
@@ -255,14 +255,14 @@ function updateRowCalculation(workType) {
     const workers = parseFloat(workersCell.textContent) || 0;
     const rate = parseFloat(rateCell.textContent.replace(/,/g, '')) || 0;
     
-    // 계약인원 계산 (계약노무비 / 노무단가)
-    const contractWorkers = rate > 0 ? contractAmount / rate : 0;
+    // 계약인원 계산 (계약노무비 / 노무단가) - 소수점 제거
+    const contractWorkers = rate > 0 ? Math.floor(contractAmount / rate) : 0;
     
     const totalLaborCost = workers * rate;
     const balance = contractAmount - totalLaborCost;
     
     // 숫자 포맷팅
-    contractWorkersCell.textContent = contractWorkers.toFixed(1);
+    contractWorkersCell.textContent = contractWorkers.toString();
     laborCostCell.textContent = totalLaborCost.toLocaleString();
     balanceCell.textContent = balance.toLocaleString();
     
@@ -310,7 +310,7 @@ function updateTotalSummary() {
     });
     
     document.getElementById('total-contract').textContent = totalContract.toLocaleString();
-    document.getElementById('total-contract-workers').textContent = totalContractWorkers.toFixed(1);
+    document.getElementById('total-contract-workers').textContent = Math.floor(totalContractWorkers).toString();
     document.getElementById('total-workers').textContent = totalWorkers.toLocaleString();
     document.getElementById('total-labor').textContent = totalLabor.toLocaleString();
     document.getElementById('total-balance').textContent = totalBalance.toLocaleString();

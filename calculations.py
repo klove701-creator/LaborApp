@@ -193,7 +193,7 @@ def calculate_dashboard_data():
             'project_name': project_name,
             'recent_date': recent_date or '데이터 없음',
             'today_workers': total_workers_today,
-            'contract_workers': round(total_contract_workers, 1),
+            'contract_workers': int(total_contract_workers),
             'cumulative_workers': cumulative_workers,
             'schedule_rate': schedule_rate,
             'avg_progress': progress_rate,
