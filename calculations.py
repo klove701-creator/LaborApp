@@ -145,7 +145,7 @@ def determine_health(project_data, labor_costs):
 
 def calculate_dashboard_data():
     """관리자 대시보드용 데이터 계산 (회사 기준 상태 포함)"""
-    from app import dm  # 순환 import 방지
+    from app_backup import dm  # 순환 import 방지
     
     # PostgreSQL 방식으로 데이터 조회
     projects_data = dm.get_projects()
@@ -226,7 +226,7 @@ def calculate_dashboard_data():
     return dashboard
 
 def calculate_project_summary(project_name, current_date):
-    from app import dm  # 순환 import 방지
+    from app_backup import dm  # 순환 import 방지
     
     # PostgreSQL 방식으로 데이터 조회
     projects_data = dm.get_projects()
@@ -333,7 +333,7 @@ def calculate_project_summary(project_name, current_date):
 
 def calculate_project_work_summary(project_name):
     """프로젝트별 공종 현황 계산 (엑셀 테이블용)"""
-    from app import dm  # 순환 import 방지
+    from app_backup import dm  # 순환 import 방지
     
     # PostgreSQL 방식으로 데이터 조회
     projects_data = dm.get_projects()
