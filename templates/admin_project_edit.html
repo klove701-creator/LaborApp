@@ -48,6 +48,7 @@
                                     <th>공종명</th>
                                     <th>업체</th>
                                     <th>계약노무비</th>
+                                    <th>계약인원</th>
                                     <th>투입인원</th>
                                     <th>단가</th>
                                     <th>투입노무비</th>
@@ -57,8 +58,8 @@
                             <tbody>
                                 {% set contracts = project_data.get('contracts', {}) %}
                                 {% set companies = project_data.get('companies', {}) %}
-                                {% for work_type in available_work_types %}
-                                {% set checked = 'checked' if work_type in project_data.work_types else '' %}
+                                {% for work_type in project_data.work_types %}
+                                {% set checked = 'checked' %}
                                 {% set total_workers = 0 %}
                                 {% for date_data in project_data.daily_data.values() %}
                                     {% if work_type in date_data %}
@@ -67,6 +68,7 @@
                                 {% endfor %}
                                 {% set labor_rate = labor_costs.get(work_type, {}).get('day', 0) %}
                                 {% set contract_amount = contracts.get(work_type, 0) %}
+                                {% set contract_workers = (contract_amount / labor_rate) if labor_rate > 0 else 0 %}
                                 {% set total_labor_cost = total_workers * labor_rate %}
                                 {% set balance = contract_amount - total_labor_cost %}
                                 <tr class="excel-row" data-work-type="{{ work_type }}">
@@ -86,8 +88,9 @@
                                                min="0" step="1000" placeholder="0" class="contract-input"
                                                onchange="updateRowCalculation('{{ work_type }}')">
                                     </td>
+                                    <td class="contract-workers-cell" id="contract_workers_{{ work_type }}">{{ "%.1f"|format(contract_workers) }}</td>
                                     <td class="workers-cell" id="workers_{{ work_type }}">{{ total_workers }}</td>
-<td class="rate-cell" id="rate_{{ work_type }}">{{ labor_rate }}</td>
+                                    <td class="rate-cell" id="rate_{{ work_type }}">{{ labor_rate }}</td>
 <td class="labor-cost-cell" id="labor_cost_{{ work_type }}">{{ total_labor_cost }}</td>
 <td class="balance-cell" id="balance_{{ work_type }}">{{ balance }}</td>
                                 </tr>
@@ -102,6 +105,7 @@
                     <div class="summary-row">
                         <span class="summary-label">합계:</span>
                         <span class="summary-item">계약노무비: <strong id="total-contract">0</strong>원</span>
+                        <span class="summary-item">계약인원: <strong id="total-contract-workers">0</strong>명</span>
                         <span class="summary-item">투입인원: <strong id="total-workers">0</strong>명</span>
                         <span class="summary-item">투입노무비: <strong id="total-labor">0</strong>원</span>
                         <span class="summary-item">잔액: <strong id="total-balance">0</strong>원</span>
@@ -241,6 +245,7 @@
 <script>
 function updateRowCalculation(workType) {
     const contractInput = document.querySelector(`input[name="contract_${workType}"]`);
+    const contractWorkersCell = document.getElementById(`contract_workers_${workType}`);
     const workersCell = document.getElementById(`workers_${workType}`);
     const rateCell = document.getElementById(`rate_${workType}`);
     const laborCostCell = document.getElementById(`labor_cost_${workType}`);
@@ -250,10 +255,14 @@ function updateRowCalculation(workType) {
     const workers = parseFloat(workersCell.textContent) || 0;
     const rate = parseFloat(rateCell.textContent.replace(/,/g, '')) || 0;
     
+    // 계약인원 계산 (계약노무비 / 노무단가)
+    const contractWorkers = rate > 0 ? contractAmount / rate : 0;
+    
     const totalLaborCost = workers * rate;
     const balance = contractAmount - totalLaborCost;
     
     // 숫자 포맷팅
+    contractWorkersCell.textContent = contractWorkers.toFixed(1);
     laborCostCell.textContent = totalLaborCost.toLocaleString();
     balanceCell.textContent = balance.toLocaleString();
     
@@ -271,6 +280,7 @@ function updateRowCalculation(workType) {
 
 function updateTotalSummary() {
     let totalContract = 0;
+    let totalContractWorkers = 0;
     let totalWorkers = 0;
     let totalLabor = 0;
     let totalBalance = 0;
@@ -280,16 +290,19 @@ function updateTotalSummary() {
         if (checkbox.checked) {
             const workType = row.dataset.workType;
             const contractInput = document.querySelector(`input[name="contract_${workType}"]`);
+            const contractWorkersCell = document.getElementById(`contract_workers_${workType}`);
             const workersCell = document.getElementById(`workers_${workType}`);
             const rateCell = document.getElementById(`rate_${workType}`);
             
             const contract = parseFloat(contractInput.value) || 0;
+            const contractWorkers = parseFloat(contractWorkersCell.textContent) || 0;
             const workers = parseFloat(workersCell.textContent) || 0;
             const rate = parseFloat(rateCell.textContent.replace(/,/g, '')) || 0;
             const labor = workers * rate;
             const balance = contract - labor;
             
             totalContract += contract;
+            totalContractWorkers += contractWorkers;
             totalWorkers += workers;
             totalLabor += labor;
             totalBalance += balance;
@@ -297,6 +310,7 @@ function updateTotalSummary() {
     });
     
     document.getElementById('total-contract').textContent = totalContract.toLocaleString();
+    document.getElementById('total-contract-workers').textContent = totalContractWorkers.toFixed(1);
     document.getElementById('total-workers').textContent = totalWorkers.toLocaleString();
     document.getElementById('total-labor').textContent = totalLabor.toLocaleString();
     document.getElementById('total-balance').textContent = totalBalance.toLocaleString();

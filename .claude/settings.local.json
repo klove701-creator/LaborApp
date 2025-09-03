@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(\\\\NAS2\\KIYENO2\\4-전략기획실\\■구매관리(구매)\\03. 김남균 차장\\#개발\\LaborApp\\templates/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

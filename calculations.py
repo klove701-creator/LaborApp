@@ -159,18 +159,18 @@ def calculate_dashboard_data():
                 if work_type in date_data:
                     cumulative_workers += date_data[work_type].get('total', 0)
 
-        # 총 인원 계산 (계약금 / 노무단가)
-        total_planned_workers = 0
+        # 총 계약인원 계산 (계약금 / 노무단가)
+        total_contract_workers = 0
         for work_type in work_types:
             contract_amount = contracts.get(work_type, 0)
             labor_rate = labor_costs.get(work_type, {}).get('day', 0)
             if labor_rate > 0:
-                total_planned_workers += contract_amount / labor_rate
+                total_contract_workers += contract_amount / labor_rate
 
-        # 진행률 = 누계인원 / 총인원 * 100
+        # 진행률 = 누계인원 / 계약인원 * 100
         progress_rate = 0.0
-        if total_planned_workers > 0:
-            progress_rate = (cumulative_workers / total_planned_workers) * 100
+        if total_contract_workers > 0:
+            progress_rate = (cumulative_workers / total_contract_workers) * 100
             progress_rate = min(100, progress_rate)  # 100% 초과 방지
 
         # 공정률 = 누계 공정률 (각 공종 최신 공정률 평균)
@@ -193,6 +193,7 @@ def calculate_dashboard_data():
             'project_name': project_name,
             'recent_date': recent_date or '데이터 없음',
             'today_workers': total_workers_today,
+            'contract_workers': round(total_contract_workers, 1),
             'cumulative_workers': cumulative_workers,
             'schedule_rate': schedule_rate,
             'avg_progress': progress_rate,
