@@ -57,13 +57,12 @@ class APITester:
         print("🧪 프로젝트 목록 조회 테스트...")
         try:
             response = self.session.get(f'{API_BASE_URL}/projects')
-
+            
             if response.status_code == 200:
-                projects = response.json()
+                projects = response.json().get('projects', {})
                 print(f"✅ 프로젝트 목록 조회 성공: {len(projects)}개 프로젝트")
                 if projects:
-                    sample_ids = [p.get('id') for p in projects[:3]]
-                    print(f"   📋 프로젝트: {sample_ids}")
+                    print(f"   📋 프로젝트: {list(projects.keys())[:3]}")
                 return True
             else:
                 print(f"❌ 프로젝트 목록 조회 실패: {response.status_code}")

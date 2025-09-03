@@ -1,14 +1,12 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
-// Normalize base URL to avoid double or missing "/api" issues
-const RAW_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '')
-const API_BASE_URL = RAW_BASE.endsWith('/api') ? RAW_BASE : `${RAW_BASE}/api`
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
 class ApiService {
   constructor() {
     this.client = axios.create({
-      baseURL: API_BASE_URL,
+      baseURL: `${API_BASE_URL}/api`,
       headers: {
         'Content-Type': 'application/json',
       },
