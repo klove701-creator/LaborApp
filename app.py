@@ -77,6 +77,17 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+# ===== PWA 지원 라우트 =====
+@app.route('/sw.js')
+def service_worker():
+    from flask import send_from_directory
+    return send_from_directory('static', 'sw.js', mimetype='application/javascript')
+
+@app.route('/manifest.json')
+def manifest():
+    from flask import send_from_directory
+    return send_from_directory('static', 'manifest.json', mimetype='application/manifest+json')
+
 # ===== 공통 유틸리티 라우트 =====
 @app.route('/check-work-type-similarity', methods=['POST'])
 def check_work_type_similarity():
