@@ -3,8 +3,16 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from datetime import date, datetime
 import os
 
-# PostgreSQL 데이터베이스 매니저 사용
-from database import DatabaseManager
+# 데이터베이스 매니저 사용 (PostgreSQL 또는 메모리)
+try:
+    from database import DatabaseManager
+    dm = DatabaseManager()
+    print("✅ PostgreSQL 데이터베이스 연결 성공")
+except Exception as e:
+    print(f"❌ PostgreSQL 연결 실패, 메모리 DB 사용: {e}")
+    from memory_database import MemoryDatabaseManager
+    dm = MemoryDatabaseManager()
+
 from calculations import calculate_project_work_summary
 from admin_routes import register_admin_routes
 from user_routes import register_user_routes
@@ -13,14 +21,6 @@ app = Flask(__name__)
 # 세션 키는 환경변수 우선
 app.secret_key = os.environ.get('SECRET_KEY', 'change_me_in_env')
 app.config['JSON_AS_ASCII'] = False
-
-# PostgreSQL 데이터 매니저 초기화
-try:
-    dm = DatabaseManager()
-    print("✅ PostgreSQL 데이터베이스 연결 성공")
-except Exception as e:
-    print(f"❌ 데이터베이스 연결 실패: {e}")
-    exit(1)
 from utils import set_data_manager
 set_data_manager(dm)
 # 데이터 새로고침 제거 (PostgreSQL은 실시간 연결)
