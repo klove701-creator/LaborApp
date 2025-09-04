@@ -1,5 +1,5 @@
 # calculations.py - 계산 관련 로직들 (PostgreSQL 버전)
-from utils import HEALTH_POLICY, parse_int, parse_float
+from utils import HEALTH_POLICY, parse_int, parse_float, get_data_manager
 
 def _avg_progress(project_data):
     """전체 일자·공종의 progress 평균(입력된 값만). 없으면 0."""
@@ -145,9 +145,8 @@ def determine_health(project_data, labor_costs):
 
 def calculate_dashboard_data():
     """관리자 대시보드용 데이터 계산 (회사 기준 상태 포함)"""
-    from app import dm  # 순환 import 방지
-    
     # PostgreSQL 방식으로 데이터 조회
+    dm = get_data_manager()
     projects_data = dm.get_projects()
     labor_costs = dm.get_labor_costs()
     
@@ -226,9 +225,8 @@ def calculate_dashboard_data():
     return dashboard
 
 def calculate_project_summary(project_name, current_date):
-    from app import dm  # 순환 import 방지
-    
     # PostgreSQL 방식으로 데이터 조회
+    dm = get_data_manager()
     projects_data = dm.get_projects()
     project_data = projects_data.get(project_name, {})
     daily_data = project_data.get('daily_data', {})
@@ -333,9 +331,8 @@ def calculate_project_summary(project_name, current_date):
 
 def calculate_project_work_summary(project_name):
     """프로젝트별 공종 현황 계산 (엑셀 테이블용)"""
-    from app import dm  # 순환 import 방지
-    
     # PostgreSQL 방식으로 데이터 조회
+    dm = get_data_manager()
     projects_data = dm.get_projects()
     labor_costs = dm.get_labor_costs()
     
