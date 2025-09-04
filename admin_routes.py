@@ -11,7 +11,11 @@ def register_admin_routes(app, dm):
     @app.route('/admin')
     @login_required(role='admin')
     def admin_dashboard():
-        dashboard_data = calculate_dashboard_data()
+        try:
+            dashboard_data = calculate_dashboard_data()
+        except Exception as e:
+            print(f"대시보드 데이터 계산 에러: {e}")
+            dashboard_data = []
         return render_template('admin_dashboard.html', dashboard_data=dashboard_data)
 
     @app.route('/admin/projects')
